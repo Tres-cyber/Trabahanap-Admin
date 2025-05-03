@@ -1,0 +1,13 @@
+{
+  "name": "@trabahanap-admin/backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Backend development server not yet implemented'",
+    "build": "echo 'Backend build not yet implemented'",
+    "test": "echo 'Backend tests not yet implemented'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+} 
