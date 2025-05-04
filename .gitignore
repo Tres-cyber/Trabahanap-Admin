@@ -22,4 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-packages/backend/admin_api/__pycache__/main.cpython-313.pyc
+packages/backend/admin_api/__pycache__/
+.env
+packages/backend/admin_api/**/__pycache__/
+

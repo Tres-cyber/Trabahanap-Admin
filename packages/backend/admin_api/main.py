@@ -1,10 +1,27 @@
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from admin_api.database import init_db
+from admin_api.routers import crud
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(crud.router, prefix="/admin", tags=["admin"])
+
+
+
+
+
+
+
+
+
+
 
 
