@@ -22,4 +22,6 @@ class AdminCreate(BaseModel):
     password: str
     
 
-    
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str   
