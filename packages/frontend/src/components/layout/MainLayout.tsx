@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -8,6 +8,7 @@ interface MainLayoutProps {
 export const MainLayout = ({ children }: MainLayoutProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = () => {
     // Clear any stored data
@@ -67,24 +68,57 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         {/* Sidebar */}
         <aside className="w-64 bg-white shadow-sm h-[calc(100vh-4rem)]">
           <nav className="mt-5 px-2">
-            <a href="/" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-900 bg-gray-100">
-              <svg className="mr-4 h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `group flex items-center px-2 py-2 text-base font-medium rounded-md ${
+                  isActive
+                    ? 'text-gray-900 bg-gray-100'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`
+              }
+            >
+              <svg className={`mr-4 h-6 w-6 ${
+                location.pathname === '/' ? 'text-gray-500' : 'text-gray-400'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
               Dashboard
-            </a>
-            <a href="/users" className="mt-1 group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-              <svg className="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            </NavLink>
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `mt-1 group flex items-center px-2 py-2 text-base font-medium rounded-md ${
+                  isActive
+                    ? 'text-gray-900 bg-gray-100'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`
+              }
+            >
+              <svg className={`mr-4 h-6 w-6 ${
+                location.pathname.startsWith('/users') ? 'text-gray-500' : 'text-gray-400'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
               Users
-            </a>
-            <a href="/verification" className="mt-1 group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-              <svg className="mr-4 h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            </NavLink>
+            <NavLink
+              to="/verification"
+              className={({ isActive }) =>
+                `mt-1 group flex items-center px-2 py-2 text-base font-medium rounded-md ${
+                  isActive
+                    ? 'text-gray-900 bg-gray-100'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`
+              }
+            >
+              <svg className={`mr-4 h-6 w-6 ${
+                location.pathname.startsWith('/verification') ? 'text-gray-500' : 'text-gray-400'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Verification
-            </a>
+            </NavLink>
           </nav>
         </aside>
 
