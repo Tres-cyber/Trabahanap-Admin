@@ -9,6 +9,15 @@ import {
 } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 import { MainLayout } from '../../components/layout/MainLayout';
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 interface User {
   id: string;
@@ -26,6 +35,9 @@ interface User {
 
 const UsersPage = () => {
   const navigate = useNavigate();
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [isBanMode, setIsBanMode] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Mock data - replace with actual API call
   const users: User[] = [
@@ -61,25 +73,76 @@ const UsersPage = () => {
     navigate(`/users/${user.id}`);
   };
 
-  const handleBanUser = (user: User) => {
+  const handleBanUsers = () => {
+    if (selectedUsers.length === 0) {
+      alert('Please select at least one user to ban.');
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const confirmBanUsers = () => {
     // TODO: Implement actual ban functionality with API call
-    console.log(`Banning user: ${user.firstName} ${user.lastName}`);
-    // Update user status to "Banned"
-    // This is just a mock implementation
-    alert(`User ${user.firstName} ${user.lastName} has been banned.`);
+    console.log(`Banning users with IDs: ${selectedUsers.join(', ')}`);
+    alert(`Selected users have been banned.`);
+    setSelectedUsers([]);
+    setIsBanMode(false);
+    setShowConfirmModal(false);
+  };
+
+  const handleCheckboxChange = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const toggleBanMode = () => {
+    setIsBanMode(!isBanMode);
+    if (!isBanMode) {
+      setSelectedUsers([]);
+    }
+  };
+
+  const getSelectedUsersNames = () => {
+    return users
+      .filter(user => selectedUsers.includes(user.id))
+      .map(user => `${user.firstName} ${user.lastName}`)
+      .join(', ');
   };
 
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+        <div className="mb-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
+          <div className="space-x-2">
+            {isBanMode && (
+              <Button
+                variant="destructive"
+                onClick={handleBanUsers}
+                disabled={selectedUsers.length === 0}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Confirm Ban
+              </Button>
+            )}
+            <Button
+              variant={isBanMode ? "outline" : "destructive"}
+              onClick={toggleBanMode}
+              className={!isBanMode ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+            >
+              {isBanMode ? "Cancel" : "Ban Users"}
+            </Button>
+          </div>
         </div>
         
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
+                {isBanMode && <TableHead className="w-12"></TableHead>}
                 <TableHead className="font-semibold text-gray-700">Full Name</TableHead>
                 <TableHead className="font-semibold text-gray-700">Age</TableHead>
                 <TableHead className="font-semibold text-gray-700">Gender</TableHead>
@@ -92,6 +155,18 @@ const UsersPage = () => {
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id} className="hover:bg-gray-50">
+                  {isBanMode && (
+                    <TableCell>
+                      {user.userType !== 'Admin' && (
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(user.id)}
+                          onChange={() => handleCheckboxChange(user.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium text-gray-900">
                     {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
                   </TableCell>
@@ -114,7 +189,7 @@ const UsersPage = () => {
                       {user.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-right">
                     <Button
                       variant="outline"
                       size="sm"
@@ -123,22 +198,43 @@ const UsersPage = () => {
                     >
                       View Profile
                     </Button>
-                    {user.userType !== 'Admin' && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleBanUser(user)}
-                        className="hover:bg-red-700"
-                      >
-                        Ban User
-                      </Button>
-                    )}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+
+        <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Ban Users</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to ban the following users? This action cannot be undone.
+                <div className="mt-2 p-2 bg-red-50 rounded-md">
+                  <p className="text-sm text-red-600">{getSelectedUsersNames()}</p>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-start">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={confirmBanUsers}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Yes, Ban Users
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowConfirmModal(false)}
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
