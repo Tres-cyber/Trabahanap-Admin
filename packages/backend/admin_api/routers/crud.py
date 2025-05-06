@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from admin_api.models.documents import Admin, AdminCreate, LoginRequest
+from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs
 from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 
 router = APIRouter()
@@ -32,3 +32,16 @@ async def login(login_data: LoginRequest):
     
     
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+
+@router.get("/get_total_users", response_model=TotalUsers)
+async def get_total_users():
+    total_users = await User.count()
+    return {"total_users": total_users}
+
+
+@router.get("/get_total_jobs", response_model=TotalJobs)
+async def get_total_jobs():
+    total_jobs = await Job.count()
+    return {"total_jobs": total_jobs}
+

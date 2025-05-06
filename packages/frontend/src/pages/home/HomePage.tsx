@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { MainLayout } from "../../components/layout/MainLayout";
@@ -13,6 +13,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { getTotalUsers, getTotalJobs } from "../../services/home_api";
 
 ChartJS.register(
   CategoryScale,
@@ -26,11 +27,44 @@ ChartJS.register(
 
 export const HomePage = () => {
   const navigate = useNavigate();
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [totalJobs, setTotalJobs] = useState<number | null>(null);
 
   useEffect(() => {
     const token = Cookies.get("access_token");
     if (!token) {
       navigate("/login");
+    } else {
+      const fetchData = async () => {
+        try {
+          const usersData = await getTotalUsers();
+          if (usersData && typeof usersData.total_users === "number") {
+            setTotalUsers(usersData.total_users);
+          } else {
+            console.error(
+              "Invalid data format received for total users:",
+              usersData
+            );
+            setTotalUsers(0);
+          }
+
+          const jobsData = await getTotalJobs();
+          if (jobsData && typeof jobsData.total_jobs === "number") {
+            setTotalJobs(jobsData.total_jobs);
+          } else {
+            console.error(
+              "Invalid data format received for total jobs:",
+              jobsData
+            );
+            setTotalJobs(0);
+          }
+        } catch (error) {
+          console.error("Failed to fetch dashboard data:", error);
+          setTotalUsers(0);
+          setTotalJobs(0);
+        }
+      };
+      fetchData();
     }
   }, [navigate]);
 
@@ -112,7 +146,7 @@ export const HomePage = () => {
                       Total Users
                     </dt>
                     <dd className="text-2xl font-semibold text-gray-900">
-                      1,234
+                      {totalUsers === null ? "Loading..." : totalUsers}
                     </dd>
                   </dl>
                 </div>
@@ -145,7 +179,7 @@ export const HomePage = () => {
                       Active Jobs
                     </dt>
                     <dd className="text-2xl font-semibold text-gray-900">
-                      567
+                      {totalJobs === null ? "Loading..." : totalJobs}
                     </dd>
                   </dl>
                 </div>
