@@ -9,7 +9,16 @@ import {
 } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 import { MainLayout } from '../../components/layout/MainLayout';
-import { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
+import { Search, Users, CheckCircle2, XCircle, Eye } from 'lucide-react';
 
 interface User {
   id: string;
@@ -27,9 +36,12 @@ interface User {
 }
 
 type FilterStatus = 'All' | 'Pending' | 'Verified' | 'Rejected';
+type UserTypeFilter = 'All' | 'Job-seeker' | 'Employer';
 
 const VerificationPage = () => {
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('All');
+  const [userTypeFilter, setUserTypeFilter] = useState<UserTypeFilter>('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
@@ -130,9 +142,17 @@ const VerificationPage = () => {
     navigate(`/verification/${user.id}`);
   };
 
-  const filteredUsers = users.filter(user => 
-    activeFilter === 'All' ? true : user.verificationStatus === activeFilter
-  );
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesStatus = activeFilter === 'All' ? true : user.verificationStatus === activeFilter;
+    const matchesUserType = userTypeFilter === 'All' ? true : user.userType === userTypeFilter;
+    const matchesSearch = searchQuery === '' || 
+      `${user.firstName} ${user.middleName} ${user.lastName} ${user.email}`.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesUserType && matchesSearch;
+  });
 
   return (
     <MainLayout>
@@ -141,113 +161,171 @@ const VerificationPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">User Verification</h1>
         </div>
 
-        <div className="mb-6 flex space-x-4">
-          <Button
-            variant={activeFilter === 'All' ? 'default' : 'outline'}
-            onClick={() => setActiveFilter('All')}
-            className={activeFilter === 'All' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-          >
-            All
-          </Button>
-          <Button
-            variant={activeFilter === 'Pending' ? 'default' : 'outline'}
-            onClick={() => setActiveFilter('Pending')}
-            className={activeFilter === 'Pending' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : ''}
-          >
-            Pending
-          </Button>
-          <Button
-            variant={activeFilter === 'Verified' ? 'default' : 'outline'}
-            onClick={() => setActiveFilter('Verified')}
-            className={activeFilter === 'Verified' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
-          >
-            Verified
-          </Button>
-          <Button
-            variant={activeFilter === 'Rejected' ? 'default' : 'outline'}
-            onClick={() => setActiveFilter('Rejected')}
-            className={activeFilter === 'Rejected' ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
-          >
-            Rejected
-          </Button>
+        <div className="mb-6 flex items-center space-x-4">
+          <div className="relative w-[300px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="pl-10 bg-white border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <Select value={activeFilter} onValueChange={(value: FilterStatus) => setActiveFilter(value)}>
+            <SelectTrigger className="w-[180px] bg-white border-gray-200 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
+              <SelectItem value="Pending" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Pending
+                </span>
+              </SelectItem>
+              <SelectItem value="Verified" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Verified
+                </span>
+              </SelectItem>
+              <SelectItem value="Rejected" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Rejected
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={userTypeFilter} onValueChange={(value: UserTypeFilter) => setUserTypeFilter(value)}>
+            <SelectTrigger className="w-[180px] bg-white border-gray-200 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <SelectValue placeholder="Select user type" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
+              <SelectItem value="All" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  All Users
+                </span>
+              </SelectItem>
+              <SelectItem value="Job-seeker" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Job Seekers
+                </span>
+              </SelectItem>
+              <SelectItem value="Employer" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Employers
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="font-semibold text-gray-700">Full Name</TableHead>
-                <TableHead className="font-semibold text-gray-700">Age</TableHead>
-                <TableHead className="font-semibold text-gray-700">Gender</TableHead>
-                <TableHead className="font-semibold text-gray-700">Email</TableHead>
-                <TableHead className="font-semibold text-gray-700">User Type</TableHead>
-                <TableHead className="font-semibold text-gray-700">Address</TableHead>
-                <TableHead className="font-semibold text-gray-700">Verification Status</TableHead>
-                <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium text-gray-900">
-                    {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
-                  </TableCell>
-                  <TableCell className="text-gray-600">{user.age}</TableCell>
-                  <TableCell className="text-gray-600">{user.gender}</TableCell>
-                  <TableCell className="text-gray-600">{user.email}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.userType === 'Admin' ? 'bg-purple-100 text-purple-800' : 
-                      user.userType === 'Employer' ? 'bg-blue-100 text-blue-800' : 
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {user.userType}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-gray-600">{user.address}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.verificationStatus === 'Verified' ? 'bg-green-100 text-green-800' :
-                      user.verificationStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {user.verificationStatus}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    {user.verificationStatus === 'Pending' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewProfile(user)}
-                          className="hover:bg-gray-100"
-                        >
-                          View Profile
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleAccept(user)}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleReject(user)}
-                          className="hover:bg-red-700"
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </TableCell>
+          {filteredUsers.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-semibold text-gray-700">Full Name</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Age</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Gender</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Email</TableHead>
+                  <TableHead className="font-semibold text-gray-700">User Type</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Address</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Verification Status</TableHead>
+                  <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium text-gray-900">
+                      {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
+                    </TableCell>
+                    <TableCell className="text-gray-600">{user.age}</TableCell>
+                    <TableCell className="text-gray-600">{user.gender}</TableCell>
+                    <TableCell className="text-gray-600">{user.email}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.userType === 'Admin' ? 'bg-purple-100 text-purple-800' : 
+                        user.userType === 'Employer' ? 'bg-blue-100 text-blue-800' : 
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {user.userType}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-gray-600">{user.address}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.verificationStatus === 'Verified' ? 'bg-green-100 text-green-800' :
+                        user.verificationStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {user.verificationStatus}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewProfile(user)}
+                        className="hover:bg-gray-100"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {user.verificationStatus === 'Pending' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAccept(user)}
+                            className="hover:bg-green-100 text-green-600"
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReject(user)}
+                            className="hover:bg-red-100 text-red-600"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <Users className="h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No users found</h3>
+              <p className="text-gray-500 text-center">
+                {searchQuery ? (
+                  <>No users match your search criteria. Try adjusting your filters or search terms.</>
+                ) : (
+                  <>No users match your selected filters. Try adjusting your filter criteria.</>
+                )}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
