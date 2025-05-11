@@ -5,6 +5,7 @@ import UsersPage from './pages/users';
 import UserProfilePage from './pages/users/[id]';
 import VerificationPage from './pages/verification';
 import VerificationProfilePage from './pages/verification/[id]';
+import JobsPage from './pages/jobs';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/users/:id" element={<UserProfilePage />} />
         <Route path="/verification" element={<VerificationPage />} />
         <Route path="/verification/:id" element={<VerificationProfilePage />} />
+        <Route path="/jobs" element={<JobsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

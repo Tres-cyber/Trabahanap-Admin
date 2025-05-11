@@ -1,14 +1,54 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
+import { NotificationPanel } from '../notifications/NotificationPanel';
+import { motion } from 'framer-motion';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  read: boolean;
+}
+
 export const MainLayout = ({ children }: MainLayoutProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Mock notifications - replace with actual API call
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: '1',
+      title: 'New User Registration',
+      message: 'John Doe has registered as an employer',
+      timestamp: '2 minutes ago',
+      type: 'info',
+      read: false,
+    },
+    {
+      id: '2',
+      title: 'Verification Approved',
+      message: 'Jane Smith\'s verification has been approved',
+      timestamp: '1 hour ago',
+      type: 'success',
+      read: true,
+    },
+    {
+      id: '3',
+      title: 'System Update',
+      message: 'System maintenance scheduled for tomorrow',
+      timestamp: '2 hours ago',
+      type: 'warning',
+      read: false,
+    },
+  ]);
 
   const handleSignOut = () => {
     // Clear any stored data
@@ -21,6 +61,14 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     // Redirect to login page
     navigate('/login');
   };
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications(notifications.map(notification =>
+      notification.id === id ? { ...notification, read: true } : notification
+    ));
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,11 +85,35 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               <h1 className="text-xl font-bold text-white">Trabahanap Admin</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+              <button 
+                onClick={() => setIsNotificationPanelOpen(true)}
+                className="relative p-2 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 group"
+              >
                 <span className="sr-only">View notifications</span>
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+                <div className="relative">
+                  <svg 
+                    className="h-6 w-6 transition-transform duration-200 group-hover:scale-110" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
+                    />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <motion.span 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center font-medium shadow-lg"
+                    >
+                      {unreadCount}
+                    </motion.span>
+                  )}
+                </div>
               </button>
               <div className="relative">
                 <button 
@@ -56,14 +128,42 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                   </div>
                 </button>
                 {isProfileOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
-                    <button
-                      onClick={handleSignOut}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Sign out
-                    </button>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="origin-top-right absolute right-0 mt-2 w-56 rounded-lg shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50"
+                  >
+                    {/* Profile Section */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">Admin User</p>
+                      <p className="text-xs text-gray-500">admin@trabahanap.com</p>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="py-1">
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <svg 
+                          className="mr-3 h-4 w-4 text-gray-400 group-hover:text-red-500" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                          />
+                        </svg>
+                        Sign out
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
               </div>
             </div>
@@ -92,6 +192,25 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               </svg>
               Dashboard
             </NavLink>
+
+            <NavLink
+              to="/jobs"
+              className={({ isActive }) =>
+                `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? 'text-[#0B153C] bg-[#0B153C]/5'
+                    : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
+                }`
+              }
+            >
+              <svg className={`mr-3 h-5 w-5 ${
+                location.pathname.startsWith('/jobs') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Jobs
+            </NavLink>
+
             <NavLink
               to="/verification"
               className={({ isActive }) =>
@@ -117,6 +236,14 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           {children}
         </main>
       </div>
+
+      {/* Notification Panel */}
+      <NotificationPanel
+        isOpen={isNotificationPanelOpen}
+        onClose={() => setIsNotificationPanelOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+      />
     </div>
   );
 }; 
