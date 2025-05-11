@@ -251,6 +251,14 @@ const VerificationPage = () => {
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
+              <SelectItem value="All" className="hover:bg-gray-50 cursor-pointer">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  All
+                </span>
+              </SelectItem>
               <SelectItem value="Pending" className="hover:bg-gray-50 cursor-pointer">
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,7 +300,7 @@ const VerificationPage = () => {
               </SelectItem>
               <SelectItem value="Job-seeker" className="hover:bg-gray-50 cursor-pointer">
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                   Job Seekers
@@ -300,7 +308,7 @@ const VerificationPage = () => {
               </SelectItem>
               <SelectItem value="Employer" className="hover:bg-gray-50 cursor-pointer">
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                   Employers
@@ -372,34 +380,29 @@ const VerificationPage = () => {
                       </span>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewProfile(user)}
-                        className="hover:bg-gray-100"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {user.verificationStatus === 'Pending' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAccept(user)}
-                            className="hover:bg-green-100 text-green-600"
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReject(user)}
-                            className="hover:bg-red-100 text-red-600"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
+                      <div className="flex space-x-2">
+                        <button 
+                          className="p-1 hover:bg-gray-100 rounded" 
+                          title="View Details"
+                          onClick={() => handleViewProfile(user)}
+                        >
+                          <Eye size={18} className="text-blue-600" />
+                        </button>
+                        <button 
+                          className="p-1 hover:bg-gray-100 rounded" 
+                          title="Approve"
+                          onClick={() => handleAccept(user)}
+                        >
+                          <CheckCircle2 size={18} className="text-green-600" />
+                        </button>
+                        <button 
+                          className="p-1 hover:bg-gray-100 rounded" 
+                          title="Reject"
+                          onClick={() => handleReject(user)}
+                        >
+                          <XCircle size={18} className="text-red-600" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

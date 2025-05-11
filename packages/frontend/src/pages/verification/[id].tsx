@@ -22,6 +22,7 @@ interface User {
   status: string;
   verificationStatus: 'Pending' | 'Verified' | 'Rejected';
   jobTags?: string[]; // Optional job tags for job-seekers
+  profilePicture?: string; // Add profile picture field
 }
 
 const VerificationProfilePage = () => {
@@ -49,7 +50,8 @@ const VerificationProfilePage = () => {
     userType: "Job-seeker",
     status: "Active",
     verificationStatus: "Pending",
-    jobTags: ["Web Development", "React", "TypeScript", "Node.js", "UI/UX Design"]
+    jobTags: ["Web Development", "React", "TypeScript", "Node.js", "UI/UX Design"],
+    profilePicture: undefined // Add profile picture field
   };
 
   useEffect(() => {
@@ -108,6 +110,11 @@ const VerificationProfilePage = () => {
       setConfirmBan(false);
       setTimeout(() => setShowToast(false), 3000);
     }
+  };
+
+  // Function to generate initials for placeholder
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
   return (
@@ -194,6 +201,34 @@ const VerificationProfilePage = () => {
               exit={{ opacity: 0, y: -20 }}
               className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
             >
+              {/* Profile Header with Picture */}
+              <div className="flex flex-col md:flex-row items-center gap-6 mb-8 pb-8 border-b">
+                <div className="relative">
+                  {user.profilePicture ? (
+                    <img
+                      src={user.profilePicture}
+                      alt={`${user.firstName} ${user.lastName}`}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-[#0B153C] flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                      {getInitials(user.firstName, user.lastName)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
+                  </h2>
+                  <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.verificationStatus)}`}>
+                      {getStatusIcon(user.verificationStatus)}
+                      {user.verificationStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
@@ -239,17 +274,6 @@ const VerificationProfilePage = () => {
                     }`}>
                       {user.userType}
                     </span>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Verification Status</h3>
-                    <motion.span
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: 1 }}
-                      className={`inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(user.verificationStatus)}`}
-                    >
-                      {getStatusIcon(user.verificationStatus)}
-                      {user.verificationStatus}
-                    </motion.span>
                   </div>
                   {user.userType === 'Job-seeker' && user.jobTags && (
                     <div>
