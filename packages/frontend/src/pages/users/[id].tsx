@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { Button } from '../../components/ui/button';
 import { motion } from 'framer-motion';
+import { Star, Briefcase } from 'lucide-react';
 
 interface User {
   id: string;
@@ -15,6 +16,9 @@ interface User {
   email: string;
   userType: 'Admin' | 'Employer' | 'Job-seeker';
   status: 'Active' | 'Inactive';
+  profilePicture?: string;
+  rating: number;
+  completedJobs: number;
 }
 
 const UserProfilePage = () => {
@@ -32,7 +36,14 @@ const UserProfilePage = () => {
     address: "123 Main Street, City, Country",
     email: "john@example.com",
     userType: "Employer",
-    status: "Active"
+    status: "Active",
+    rating: 4.8,
+    completedJobs: 45
+  };
+
+  // Function to generate initials for placeholder
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
   return (
@@ -54,6 +65,38 @@ const UserProfilePage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
         >
+          {/* Profile Header */}
+          <div className="flex flex-col md:flex-row items-center gap-6 mb-8 pb-8 border-b">
+            <div className="relative">
+              {user.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={`${user.firstName} ${user.lastName}`}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-[#0B153C] flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                  {getInitials(user.firstName, user.lastName)}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
+              </h2>
+              <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span className="text-gray-700 font-medium">{user.rating.toFixed(1)} Rating</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-blue-500" />
+                  <span className="text-gray-700 font-medium">{user.completedJobs} Jobs Completed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -117,11 +160,6 @@ const UserProfilePage = () => {
               className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
             >
               Deactivate User
-            </Button>
-            <Button
-              className="bg-[#0B153C] hover:bg-[#0B153C]/90"
-            >
-              Edit Profile
             </Button>
           </div>
         </motion.div>
