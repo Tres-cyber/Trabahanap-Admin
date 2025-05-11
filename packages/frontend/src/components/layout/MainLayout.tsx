@@ -75,24 +75,20 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       {/* Fixed Header */}
       <header className="fixed top-0 left-0 right-0 bg-[#0B153C] shadow-lg z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center">
-                  <span className="text-[#0B153C] font-bold text-xl">T</span>
-                </div>
-              </div>
-              <h1 className="text-xl font-bold text-white">Trabahanap Admin</h1>
-            </div>
+          <div className="flex justify-between h-20 items-center">
             <div className="flex items-center space-x-4">
-              <button 
+              {/* Logo Placeholder */}
+              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+            </div>
+            <div className="flex items-center space-x-6">
+              <button
                 onClick={() => setIsNotificationPanelOpen(true)}
                 className="relative p-2 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 group"
               >
                 <span className="sr-only">View notifications</span>
                 <div className="relative">
                   <svg 
-                    className="h-6 w-6 transition-transform duration-200 group-hover:scale-110" 
+                    className="h-7 w-7 transition-transform duration-200 group-hover:scale-110" 
                     fill="none" 
                     viewBox="0 0 24 24" 
                     stroke="currentColor"
@@ -108,32 +104,31 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                     <motion.span 
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center font-medium shadow-lg"
+                      className="absolute -top-1 -right-1 h-6 w-6 bg-red-500 rounded-full text-sm text-white flex items-center justify-center font-medium shadow-lg"
                     >
                       {unreadCount}
                     </motion.span>
                   )}
                 </div>
               </button>
-              <div className="relative">
-                <button 
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-2 text-white/80 hover:text-white transition-colors"
-                >
-                  <span className="sr-only">Open user menu</span>
-                  <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                </button>
+              
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center space-x-3 text-white/80 hover:text-white transition-colors relative"
+              >
+                <span className="sr-only">Open user menu</span>
+                <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
                 {isProfileOpen && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="origin-top-right absolute right-0 mt-2 w-56 rounded-lg shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50"
+                    className="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50"
                   >
                     {/* Profile Section */}
                     <div className="px-4 py-3 border-b border-gray-100">
@@ -165,7 +160,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
                     </div>
                   </motion.div>
                 )}
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -174,18 +169,28 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       <div className="flex pt-16">
         {/* Fixed Sidebar */}
         <aside className="fixed left-0 top-16 w-64 bg-white shadow-md h-[calc(100vh-4rem)]">
-          <nav className="mt-5 px-3 space-y-1">
+          {/* Logo Placeholder */}
+          <div className="px-4 pt-8 pb-6 border-b border-gray-100">
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 bg-[#0B153C] rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">T</span>
+              </div>
+              <span className="text-lg font-semibold text-[#0B153C]">Trabahanap</span>
+            </div>
+          </div>
+          
+          <nav className="mt-8 px-3 space-y-2">
             <NavLink
               to="/"
               className={({ isActive }) =>
-                `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
                     ? 'text-[#0B153C] bg-[#0B153C]/5'
                     : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
                 }`
               }
             >
-              <svg className={`mr-3 h-5 w-5 ${
+              <svg className={`mr-4 h-6 w-6 ${
                 location.pathname === '/' ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
               }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -194,16 +199,34 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             </NavLink>
 
             <NavLink
-              to="/jobs"
+              to="/verification"
               className={({ isActive }) =>
-                `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
                     ? 'text-[#0B153C] bg-[#0B153C]/5'
                     : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
                 }`
               }
             >
-              <svg className={`mr-3 h-5 w-5 ${
+              <svg className={`mr-4 h-6 w-6 ${
+                location.pathname.startsWith('/verification') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Verification
+            </NavLink>
+
+            <NavLink
+              to="/jobs"
+              className={({ isActive }) =>
+                `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? 'text-[#0B153C] bg-[#0B153C]/5'
+                    : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
+                }`
+              }
+            >
+              <svg className={`mr-4 h-6 w-6 ${
                 location.pathname.startsWith('/jobs') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
               }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -212,21 +235,21 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             </NavLink>
 
             <NavLink
-              to="/verification"
+              to="/reports"
               className={({ isActive }) =>
-                `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
                     ? 'text-[#0B153C] bg-[#0B153C]/5'
                     : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
                 }`
               }
             >
-              <svg className={`mr-3 h-5 w-5 ${
-                location.pathname.startsWith('/verification') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              <svg className={`mr-4 h-6 w-6 ${
+                location.pathname.startsWith('/reports') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
               }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Verification
+              Reports
             </NavLink>
           </nav>
         </aside>
