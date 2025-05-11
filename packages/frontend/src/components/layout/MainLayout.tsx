@@ -72,8 +72,8 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-[#0B153C] shadow-lg">
+      {/* Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 bg-[#0B153C] shadow-lg z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center space-x-3">
@@ -171,9 +171,9 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-md h-[calc(100vh-4rem)]">
+      <div className="flex pt-16">
+        {/* Fixed Sidebar */}
+        <aside className="fixed left-0 top-16 w-64 bg-white shadow-md h-[calc(100vh-4rem)]">
           <nav className="mt-5 px-3 space-y-1">
             <NavLink
               to="/"
@@ -232,7 +232,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 ml-64 p-8">
           {children}
         </main>
       </div>
