@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
-import { Search, Users, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { Search, Users, CheckCircle2, XCircle, Eye, Ban } from 'lucide-react';
+import { Checkbox } from "../../components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "../../components/ui/dialog";
 
 interface User {
   id: string;
@@ -46,6 +48,10 @@ const VerificationPage = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [confirmBan, setConfirmBan] = useState(false);
+  const [isBanMode, setIsBanMode] = useState(false);
   const navigate = useNavigate();
 
   // Mock data - replace with actual API call
@@ -146,6 +152,43 @@ const VerificationPage = () => {
     setSearchQuery(e.target.value);
   };
 
+  const handleBanUsers = () => {
+    if (confirmBan && selectedUsers.length > 0) {
+      // TODO: Implement actual ban functionality with API call
+      console.log('Banning users:', selectedUsers);
+      setShowBanDialog(false);
+      setConfirmBan(false);
+      setSelectedUsers([]);
+      setIsBanMode(false);
+      // Show success message
+      setShowSuccessPopup(true);
+      setTimeout(() => {
+        setShowSuccessPopup(false);
+      }, 2000);
+    }
+  };
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUsers.length === filteredUsers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(filteredUsers.map(user => user.id));
+    }
+  };
+
+  const handleCancelBanMode = () => {
+    setIsBanMode(false);
+    setSelectedUsers([]);
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesStatus = activeFilter === 'All' ? true : user.verificationStatus === activeFilter;
     const matchesUserType = userTypeFilter === 'All' ? true : user.userType === userTypeFilter;
@@ -157,8 +200,39 @@ const VerificationPage = () => {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+        <div className="mb-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">User Verification</h1>
+          <div className="flex gap-2">
+            {isBanMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCancelBanMode}
+                  className="flex items-center gap-2 hover:bg-gray-100"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowBanDialog(true)}
+                  disabled={selectedUsers.length === 0}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                >
+                  <Ban className="w-4 h-4" />
+                  Ban Selected ({selectedUsers.length})
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="destructive"
+                onClick={() => setIsBanMode(true)}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm px-6 py-2 rounded-md transition-colors duration-200"
+              >
+                <Ban className="w-4 h-4" />
+                Ban Users
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mb-6 flex items-center space-x-4">
@@ -240,6 +314,16 @@ const VerificationPage = () => {
           {filteredUsers.length > 0 ? (
             <Table>
               <TableHeader>
+                {isBanMode && (
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={selectedUsers.length === filteredUsers.length}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
+                  </TableRow>
+                )}
                 <TableRow className="bg-gray-50">
                   <TableHead className="font-semibold text-gray-700">Full Name</TableHead>
                   <TableHead className="font-semibold text-gray-700">Age</TableHead>
@@ -254,6 +338,14 @@ const VerificationPage = () => {
               <TableBody>
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id} className="hover:bg-gray-50">
+                    {isBanMode && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedUsers.includes(user.id)}
+                          onCheckedChange={() => handleSelectUser(user.id)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium text-gray-900">
                       {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
                     </TableCell>
@@ -385,10 +477,56 @@ const VerificationPage = () => {
         </div>
       )}
 
+      {/* Ban Confirmation Dialog */}
+      <Dialog open={showBanDialog} onOpenChange={setShowBanDialog}>
+        <DialogContent className="bg-white border-none shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 text-xl font-semibold">Ban Users Confirmation</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to ban {selectedUsers.length} selected user{selectedUsers.length > 1 ? 's' : ''}? This action cannot be undone.
+            </p>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="confirm-ban"
+                checked={confirmBan}
+                onCheckedChange={(checked: boolean) => setConfirmBan(checked)}
+              />
+              <label htmlFor="confirm-ban" className="text-sm text-gray-600">
+                I confirm that I want to ban these users
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBanDialog(false);
+                setConfirmBan(false);
+              }}
+              className="hover:bg-gray-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBanUsers}
+              disabled={!confirmBan}
+              className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
+            >
+              Ban Users
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Success Popup */}
       {showSuccessPopup && (
         <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          User verification has been accepted successfully!
+          {selectedUsers.length > 0 
+            ? `Successfully banned ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}!`
+            : 'User verification has been accepted successfully!'}
         </div>
       )}
     </MainLayout>

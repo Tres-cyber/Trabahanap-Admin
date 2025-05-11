@@ -1,10 +1,12 @@
 import { useParams } from 'react-router-dom';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../../components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ZoomIn, ZoomOut, RotateCcw, Ban } from 'lucide-react';
+import { Label } from '../../components/ui/label';
+import { Checkbox } from '../../components/ui/checkbox';
 
 interface User {
   id: string;
@@ -29,6 +31,8 @@ const VerificationProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [confirmBan, setConfirmBan] = useState(false);
   
   // Mock data - replace with actual API call
   const user: User = {
@@ -100,18 +104,82 @@ const VerificationProfilePage = () => {
     setRotation(0);
   };
 
+  const handleBanUser = () => {
+    if (confirmBan) {
+      setToastType('error');
+      setToastMessage('User has been banned successfully');
+      setShowToast(true);
+      setShowBanDialog(false);
+      setConfirmBan(false);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="outline"
-            onClick={() => window.history.back()}
-            className="hover:bg-gray-100"
-          >
-            ← Back to Verification
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Verification Profile</h1>
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => window.history.back()}
+              className="hover:bg-gray-100"
+            >
+              ← Back to Verification
+            </Button>
+            <h1 className="text-3xl font-bold text-gray-900">Verification Profile</h1>
+          </div>
+          <Dialog open={showBanDialog} onOpenChange={setShowBanDialog}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm px-6 py-2 rounded-md transition-colors duration-200"
+              >
+                <Ban className="w-4 h-4" />
+                Ban User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-white border-none shadow-xl">
+              <DialogHeader>
+                <DialogTitle className="text-red-600 text-xl font-semibold">Ban User Confirmation</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <p className="text-gray-600 mb-4">
+                  Are you sure you want to ban this user? This action cannot be undone.
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="confirm-ban"
+                    checked={confirmBan}
+                    onCheckedChange={(checked: boolean) => setConfirmBan(checked)}
+                  />
+                  <Label htmlFor="confirm-ban" className="text-sm text-gray-600">
+                    I confirm that I want to ban this user
+                  </Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowBanDialog(false);
+                    setConfirmBan(false);
+                  }}
+                  className="hover:bg-gray-100"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleBanUser}
+                  disabled={!confirmBan}
+                  className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                >
+                  Ban User
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <AnimatePresence>
@@ -193,7 +261,26 @@ const VerificationProfilePage = () => {
 
               {/* ID Images Section */}
               <div className="mt-8 border-t border-gray-200 pt-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">ID Verification</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">ID Verification</h2>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleVerification('Rejected')}
+                      className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={() => handleVerification('Verified')}
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Verify
+                    </Button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-gray-500">Front ID</h3>
