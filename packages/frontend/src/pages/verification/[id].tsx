@@ -21,6 +21,7 @@ interface User {
   userType: 'Admin' | 'Employer' | 'Job-seeker';
   status: string;
   verificationStatus: 'Pending' | 'Verified' | 'Rejected';
+  jobTags?: string[]; // Optional job tags for job-seekers
 }
 
 const VerificationProfilePage = () => {
@@ -45,9 +46,10 @@ const VerificationProfilePage = () => {
     gender: "Male",
     address: "123 Main Street, City, Country",
     email: "john@example.com",
-    userType: "Employer",
+    userType: "Job-seeker",
     status: "Active",
-    verificationStatus: "Pending"
+    verificationStatus: "Pending",
+    jobTags: ["Web Development", "React", "TypeScript", "Node.js", "UI/UX Design"]
   };
 
   useEffect(() => {
@@ -57,13 +59,6 @@ const VerificationProfilePage = () => {
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleVerification = (status: 'Verified' | 'Rejected') => {
-    setToastType(status === 'Verified' ? 'success' : 'error');
-    setToastMessage(status === 'Verified' ? 'User verified successfully!' : 'User verification rejected');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -256,6 +251,21 @@ const VerificationProfilePage = () => {
                       {user.verificationStatus}
                     </motion.span>
                   </div>
+                  {user.userType === 'Job-seeker' && user.jobTags && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Job Tags</h3>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {user.jobTags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -263,23 +273,6 @@ const VerificationProfilePage = () => {
               <div className="mt-8 border-t border-gray-200 pt-8">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-gray-900">ID Verification</h2>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleVerification('Rejected')}
-                      className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject
-                    </Button>
-                    <Button
-                      onClick={() => handleVerification('Verified')}
-                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Verify
-                    </Button>
-                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
