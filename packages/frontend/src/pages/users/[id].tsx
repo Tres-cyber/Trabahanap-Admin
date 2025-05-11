@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { Button } from '../../components/ui/button';
+import { motion } from 'framer-motion';
 
 interface User {
   id: string;
@@ -13,7 +14,7 @@ interface User {
   address: string;
   email: string;
   userType: 'Admin' | 'Employer' | 'Job-seeker';
-  status: string;
+  status: 'Active' | 'Inactive';
 }
 
 const UserProfilePage = () => {
@@ -30,7 +31,7 @@ const UserProfilePage = () => {
     gender: "Male",
     address: "123 Main Street, City, Country",
     email: "john@example.com",
-    userType: "Admin",
+    userType: "Employer",
     status: "Active"
   };
 
@@ -48,7 +49,11 @@ const UserProfilePage = () => {
           <h1 className="text-3xl font-bold text-gray-900">User Profile</h1>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -98,14 +103,28 @@ const UserProfilePage = () => {
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Status</h3>
                 <span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${
-                  user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                 }`}>
                   {user.status}
                 </span>
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="mt-8 flex justify-end gap-4">
+            <Button
+              variant="outline"
+              className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+            >
+              Deactivate User
+            </Button>
+            <Button
+              className="bg-[#0B153C] hover:bg-[#0B153C]/90"
+            >
+              Edit Profile
+            </Button>
+          </div>
+        </motion.div>
       </div>
     </MainLayout>
   );
