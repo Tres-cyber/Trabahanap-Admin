@@ -20,7 +20,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Search, Users, CheckCircle2, XCircle, Eye, Ban } from 'lucide-react';
 import { Checkbox } from "../../components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "../../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
 
 interface User {
   id: string;
