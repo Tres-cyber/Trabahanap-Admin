@@ -132,14 +132,15 @@ const JobUsersPage = () => {
                       </TableCell>
                       <TableCell>{user.completedJobs}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewProfile(user.id)}
-                          className="hover:bg-gray-100"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex space-x-2">
+                          <button 
+                            className="p-1 hover:bg-gray-100 rounded" 
+                            title="View Profile"
+                            onClick={() => handleViewProfile(user.id)}
+                          >
+                            <Eye size={18} className="text-blue-600" />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
