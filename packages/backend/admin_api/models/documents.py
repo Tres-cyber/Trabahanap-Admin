@@ -22,4 +22,58 @@ class AdminCreate(BaseModel):
     password: str
     
 
-    
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str   
+
+
+class User(Document):
+    first_name: str = Field(alias="firstName")
+    middle_name: str | None = Field(default=None, alias="middleName")
+    last_name: str = Field(alias="lastName")
+    suffix_name: str | None = Field(default=None, alias="suffixName")
+    gender: str
+    birth_date: datetime = Field(alias="birthday")
+    age: int
+    email: EmailStr = Field(alias="emailAddress")
+    password: str
+    profile_picture: str | None = Field(default=None, alias="profileImage")
+    barangay: str
+    street: str
+    house_number: str | None = Field(default=None, alias="houseNumber")
+    user_type: str = Field(alias="userType")
+    id_validation_front_image: str | None = Field(default=None, alias="idValidationFrontImage")
+    id_validation_back_image: str | None = Field(default=None, alias="idValidationBackImage")
+    id_type: str | None = Field(default=None, alias="idType")
+
+    class Settings:
+        name = "users"
+
+
+class TotalUsers(BaseModel):
+    total_users: int
+
+class Job(Document):
+    job_title: str = Field(alias="jobTitle")
+    job_description: str = Field(alias="jobDescription")
+    category: str
+    job_location: str = Field(alias="jobLocation")
+    job_status: str = Field(alias="jobStatus")
+    budget: str
+    job_duration: str = Field(alias="jobDuration")
+    job_image: list[str] = Field(alias="jobImage")
+    date_posted: datetime = Field(alias="datePosted")
+    job_rating: int = Field(alias="jobRating")
+    job_review: str = Field(alias="jobReview")
+    accepted_at: datetime = Field(alias="acceptedAt")
+    completed_at: datetime = Field(alias="completedAt")
+    verified_at: datetime = Field(alias="verifiedAt")
+    job_seeker_id: str = Field(alias="jobSeekerId")
+    offer: str 
+
+    class Settings:
+        name = "jobrequest"
+
+
+class TotalJobs(BaseModel):
+    total_jobs: int

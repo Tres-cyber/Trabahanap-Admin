@@ -1,5 +1,8 @@
-import { MainLayout } from '../../components/layout/MainLayout';
-import { Line } from 'react-chartjs-2';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
+import { MainLayout } from "../../components/layout/MainLayout";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,7 +12,8 @@ import {
   Title,
   Tooltip,
   Legend,
-} from 'chart.js';
+} from "chart.js";
+import { getTotalUsers, getTotalJobs } from "../../services/home_api";
 
 ChartJS.register(
   CategoryScale,
@@ -22,14 +26,68 @@ ChartJS.register(
 );
 
 export const HomePage = () => {
-  // Sample data for the charts
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
+  const navigate = useNavigate();
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [totalJobs, setTotalJobs] = useState<number | null>(null);
+
+  useEffect(() => {
+    const token = Cookies.get("access_token");
+    if (!token) {
+      navigate("/login");
+    } else {
+      const fetchData = async () => {
+        try {
+          const usersData = await getTotalUsers();
+          if (usersData && typeof usersData.total_users === "number") {
+            setTotalUsers(usersData.total_users);
+          } else {
+            console.error(
+              "Invalid data format received for total users:",
+              usersData
+            );
+            setTotalUsers(0);
+          }
+
+          const jobsData = await getTotalJobs();
+          if (jobsData && typeof jobsData.total_jobs === "number") {
+            setTotalJobs(jobsData.total_jobs);
+          } else {
+            console.error(
+              "Invalid data format received for total jobs:",
+              jobsData
+            );
+            setTotalJobs(0);
+          }
+        } catch (error) {
+          console.error("Failed to fetch dashboard data:", error);
+          setTotalUsers(0);
+          setTotalJobs(0);
+        }
+      };
+      fetchData();
+    }
+  }, [navigate]);
+
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
   const applicationsData = {
     labels: months,
     datasets: [
       {
-        label: 'Applications',
+        label: "Applications",
         data: [65, 59, 80, 81, 56, 55, 40, 45, 60, 75, 85, 90],
         borderColor: 'rgb(99, 102, 241)',
         backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -43,8 +101,9 @@ export const HomePage = () => {
     labels: months,
     datasets: [
       {
-        label: 'Users',
+        label: "Users",
         data: [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85],
+
         borderColor: 'rgb(16, 185, 129)',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         tension: 0.4,
@@ -57,7 +116,7 @@ export const HomePage = () => {
     responsive: true,
     plugins: {
       legend: {
-        position: 'top' as const,
+        position: "top" as const,
       },
     },
     scales: {
@@ -91,8 +150,13 @@ export const HomePage = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-600 truncate">Total Users</dt>
-                    <dd className="text-3xl font-bold text-gray-900">1,234</dd>
+                    <dt className="text-sm font-medium text-gray-600 truncate">
+                      Total Users
+                    </dt>
+                    <dd className="text-3xl font-bold text-gray-900">
+                      {totalUsers === null ? "Loading..." : totalUsers}
+                    </dd>
+
                   </dl>
                 </div>
               </div>
@@ -110,8 +174,12 @@ export const HomePage = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-600 truncate">Active Jobs</dt>
-                    <dd className="text-3xl font-bold text-gray-900">567</dd>
+                    <dt className="text-sm font-medium text-gray-600 truncate">
+                      Active Jobs
+                    </dt>
+                    <dd className="text-3xl font-bold text-gray-900">
+                      {totalJobs === null ? "Loading..." : totalJobs}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -159,4 +227,4 @@ export const HomePage = () => {
       </div>
     </MainLayout>
   );
-}; 
+};
