@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { NotificationPanel } from '../notifications/NotificationPanel';
 import { motion } from 'framer-motion';
+import ediskarteLogo from '../../assets/ediskarte-logo.png';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -169,13 +170,14 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       <div className="flex pt-16">
         {/* Fixed Sidebar */}
         <aside className="fixed left-0 top-16 w-64 bg-white shadow-md h-[calc(100vh-4rem)]">
-          {/* Logo Placeholder */}
-          <div className="px-4 pt-8 pb-6 border-b border-gray-100">
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-[#0B153C] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">T</span>
-              </div>
-              <span className="text-lg font-semibold text-[#0B153C]">Trabahanap</span>
+          {/* Logo */}
+          <div className="px-4 pt-12 pb-4 border-b border-gray-100">
+            <div className="flex items-center justify-center">
+              <img 
+                src={ediskarteLogo} 
+                alt="Ediskarte Logo" 
+                className="h-20 w-auto object-contain"
+              />
             </div>
           </div>
           
@@ -247,9 +249,10 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               <svg className={`mr-4 h-6 w-6 ${
                 location.pathname.startsWith('/reports') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
               }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Reports
+              User Report
             </NavLink>
           </nav>
         </aside>
