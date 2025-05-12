@@ -379,28 +379,28 @@ const VerificationPage = () => {
                         {user.verificationStatus}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <div className="flex space-x-2">
+                    <TableCell className="text-right space-x-3">
+                      <div className="flex space-x-3">
                         <button 
-                          className="p-1 hover:bg-gray-100 rounded" 
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
                           title="View Details"
                           onClick={() => handleViewProfile(user)}
                         >
-                          <Eye size={18} className="text-blue-600" />
+                          <Eye size={24} className="text-blue-600" />
                         </button>
                         <button 
-                          className="p-1 hover:bg-gray-100 rounded" 
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
                           title="Approve"
                           onClick={() => handleAccept(user)}
                         >
-                          <CheckCircle2 size={18} className="text-green-600" />
+                          <CheckCircle2 size={24} className="text-green-600" />
                         </button>
                         <button 
-                          className="p-1 hover:bg-gray-100 rounded" 
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
                           title="Reject"
                           onClick={() => handleReject(user)}
                         >
-                          <XCircle size={18} className="text-red-600" />
+                          <XCircle size={24} className="text-red-600" />
                         </button>
                       </div>
                     </TableCell>
