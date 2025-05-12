@@ -132,13 +132,13 @@ const JobUsersPage = () => {
                       </TableCell>
                       <TableCell>{user.completedJobs}</TableCell>
                       <TableCell>
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-3">
                           <button 
-                            className="p-1 hover:bg-gray-100 rounded" 
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
                             title="View Profile"
                             onClick={() => handleViewProfile(user.id)}
                           >
-                            <Eye size={18} className="text-blue-600" />
+                            <Eye size={24} className="text-blue-600" />
                           </button>
                         </div>
                       </TableCell>
