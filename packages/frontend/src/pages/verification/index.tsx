@@ -388,20 +388,24 @@ const VerificationPage = () => {
                         >
                           <Eye size={24} className="text-blue-600" />
                         </button>
-                        <button 
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
-                          title="Approve"
-                          onClick={() => handleAccept(user)}
-                        >
-                          <CheckCircle2 size={24} className="text-green-600" />
-                        </button>
-                        <button 
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
-                          title="Reject"
-                          onClick={() => handleReject(user)}
-                        >
-                          <XCircle size={24} className="text-red-600" />
-                        </button>
+                        {user.verificationStatus === 'Pending' && (
+                          <>
+                            <button 
+                              className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
+                              title="Approve"
+                              onClick={() => handleAccept(user)}
+                            >
+                              <CheckCircle2 size={24} className="text-green-600" />
+                            </button>
+                            <button 
+                              className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
+                              title="Reject"
+                              onClick={() => handleReject(user)}
+                            >
+                              <XCircle size={24} className="text-red-600" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
