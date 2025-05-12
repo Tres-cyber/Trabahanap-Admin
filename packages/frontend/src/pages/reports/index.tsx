@@ -9,6 +9,8 @@ import {
 } from "../../components/ui/select";
 import { MainLayout } from '../../components/layout/MainLayout';
 import { Input } from '../../components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
 
 // Mock data for reports
 const mockReports = [
@@ -44,6 +46,10 @@ const mockReports = [
 const ReportsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -71,6 +77,31 @@ const ReportsPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleViewReport = (report: typeof mockReports[0]) => {
+    setSelectedReport(report);
+    setShowViewModal(true);
+  };
+
+  const handleAcceptReport = (report: typeof mockReports[0]) => {
+    setSelectedReport(report);
+    setShowAcceptModal(true);
+  };
+
+  const handleRejectReport = (report: typeof mockReports[0]) => {
+    setSelectedReport(report);
+    setShowRejectModal(true);
+  };
+
+  const handleConfirmAccept = () => {
+    // TODO: Implement accept logic
+    setShowAcceptModal(false);
+  };
+
+  const handleConfirmReject = () => {
+    // TODO: Implement reject logic
+    setShowRejectModal(false);
+  };
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
@@ -93,7 +124,7 @@ const ReportsPage: React.FC = () => {
               <SelectValue placeholder="Select Status" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
-              <SelectItem value="all" className="hover:bg-gray-50 cursor-pointer">
+              <SelectItem value="all" className="hover:bg-gray-50 cursor-pointer bg-white">
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -101,19 +132,19 @@ const ReportsPage: React.FC = () => {
                   All Status
                 </span>
               </SelectItem>
-              <SelectItem value="pending" className="hover:bg-gray-50 cursor-pointer">
+              <SelectItem value="pending" className="hover:bg-gray-50 cursor-pointer bg-white">
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-yellow-500" />
                   Pending
                 </span>
               </SelectItem>
-              <SelectItem value="under review" className="hover:bg-gray-50 cursor-pointer">
+              <SelectItem value="under review" className="hover:bg-gray-50 cursor-pointer bg-white">
                 <span className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-blue-500" />
                   Under Review
                 </span>
               </SelectItem>
-              <SelectItem value="resolved" className="hover:bg-gray-50 cursor-pointer">
+              <SelectItem value="resolved" className="hover:bg-gray-50 cursor-pointer bg-white">
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
                   Resolved
@@ -124,7 +155,7 @@ const ReportsPage: React.FC = () => {
         </div>
 
         {/* Reports Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           {filteredReports.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -159,16 +190,28 @@ const ReportsPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <button className="p-1 hover:bg-gray-100 rounded" title="View Details">
-                          <Eye size={18} className="text-blue-600" />
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex space-x-3">
+                        <button 
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
+                          title="View Details"
+                          onClick={() => handleViewReport(report)}
+                        >
+                          <Eye size={24} className="text-blue-600" />
                         </button>
-                        <button className="p-1 hover:bg-gray-100 rounded" title="Approve">
-                          <CheckCircle size={18} className="text-green-600" />
+                        <button 
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
+                          title="Approve"
+                          onClick={() => handleAcceptReport(report)}
+                        >
+                          <CheckCircle size={24} className="text-green-600" />
                         </button>
-                        <button className="p-1 hover:bg-gray-100 rounded" title="Reject">
-                          <XCircle size={18} className="text-red-600" />
+                        <button 
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
+                          title="Reject"
+                          onClick={() => handleRejectReport(report)}
+                        >
+                          <XCircle size={24} className="text-red-600" />
                         </button>
                       </div>
                     </td>
@@ -191,6 +234,115 @@ const ReportsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* View Report Modal */}
+      <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+        <DialogContent className="bg-white border-none shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">Report Details</DialogTitle>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="py-4 space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Reporter</h3>
+                <p className="text-base text-gray-900 mt-1">{selectedReport.reporter}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Reported User/Content</h3>
+                <p className="text-base text-gray-900 mt-1">{selectedReport.reportedUser}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Reason</h3>
+                <p className="text-base text-gray-900 mt-1">{selectedReport.reason}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Date Reported</h3>
+                <p className="text-base text-gray-900 mt-1">{selectedReport.date}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                <span className={`inline-block mt-1 px-2 py-1 text-xs rounded-full ${getStatusColor(selectedReport.status)}`}>
+                  {selectedReport.status}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Accept Report Modal */}
+      <Dialog open={showAcceptModal} onOpenChange={setShowAcceptModal}>
+        <DialogContent className="bg-white border-none shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">Accept Report</DialogTitle>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="py-4 space-y-4">
+              <p className="text-gray-600">
+                Are you sure you want to accept this report? This action will mark the report as resolved and may take appropriate action against the reported user/content.
+              </p>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
+                <p className="text-sm text-gray-900">Reporter: {selectedReport.reporter}</p>
+                <p className="text-sm text-gray-900">Reported: {selectedReport.reportedUser}</p>
+                <p className="text-sm text-gray-900">Reason: {selectedReport.reason}</p>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAcceptModal(false)}
+                  className="mr-2"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmAccept}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Accept Report
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Report Modal */}
+      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+        <DialogContent className="bg-white border-none shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">Reject Report</DialogTitle>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="py-4 space-y-4">
+              <p className="text-gray-600">
+                Are you sure you want to reject this report? This action will mark the report as resolved and no action will be taken against the reported user/content.
+              </p>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
+                <p className="text-sm text-gray-900">Reporter: {selectedReport.reporter}</p>
+                <p className="text-sm text-gray-900">Reported: {selectedReport.reportedUser}</p>
+                <p className="text-sm text-gray-900">Reason: {selectedReport.reason}</p>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRejectModal(false)}
+                  className="mr-2"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmReject}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Reject Report
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };
