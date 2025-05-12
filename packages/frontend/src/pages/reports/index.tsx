@@ -163,7 +163,6 @@ const ReportsPage: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reporter</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reported</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -176,13 +175,6 @@ const ReportsPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reporter}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reportedUser}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        report.type === 'User' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                      }`}>
-                        {report.type}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reason}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(report.status)}`}>
@@ -248,10 +240,6 @@ const ReportsPage: React.FC = () => {
                 <p className="text-base text-gray-900 mt-1">{selectedReport.reporter}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Reported User/Content</h3>
-                <p className="text-base text-gray-900 mt-1">{selectedReport.reportedUser}</p>
-              </div>
-              <div>
                 <h3 className="text-sm font-medium text-gray-500">Reason</h3>
                 <p className="text-base text-gray-900 mt-1">{selectedReport.reason}</p>
               </div>
@@ -284,7 +272,6 @@ const ReportsPage: React.FC = () => {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
                 <p className="text-sm text-gray-900">Reporter: {selectedReport.reporter}</p>
-                <p className="text-sm text-gray-900">Reported: {selectedReport.reportedUser}</p>
                 <p className="text-sm text-gray-900">Reason: {selectedReport.reason}</p>
               </div>
               <DialogFooter>
@@ -321,7 +308,6 @@ const ReportsPage: React.FC = () => {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
                 <p className="text-sm text-gray-900">Reporter: {selectedReport.reporter}</p>
-                <p className="text-sm text-gray-900">Reported: {selectedReport.reportedUser}</p>
                 <p className="text-sm text-gray-900">Reason: {selectedReport.reason}</p>
               </div>
               <DialogFooter>
