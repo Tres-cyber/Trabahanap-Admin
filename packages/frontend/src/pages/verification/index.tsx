@@ -9,7 +9,7 @@ import {
 } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 import { MainLayout } from '../../components/layout/MainLayout';
-import { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
 import {
   Select,
   SelectContent,
@@ -18,23 +18,26 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
-import { Search, Users, CheckCircle2, XCircle, Eye, Ban } from 'lucide-react';
+import { Search, Users, CheckCircle2, XCircle, Eye, Ban, Loader2 } from 'lucide-react';
 import { Checkbox } from "../../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import { getAllApplicants, updateVerificationStatus } from "../../services/verification_api";
+import Cookies from "js-cookie";
 
 interface User {
   id: string;
   firstName: string;
-  middleName: string;
+  middleName?: string;
   lastName: string;
-  suffix: string;
+  suffixName?: string;
   age: number;
   gender: string;
-  address: string;
-  email: string;
-  userType: 'Admin' | 'Employer' | 'Job-seeker';
-  status: string;
-  verificationStatus: 'Pending' | 'Verified' | 'Rejected';
+  barangay: string;
+  street: string;
+  houseNumber?: string;
+  emailAddress: string;
+  userType: string;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
 }
 
 type FilterStatus = 'All' | 'Pending' | 'Verified' | 'Rejected';
@@ -47,72 +50,56 @@ const VerificationPage = () => {
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [confirmBan, setConfirmBan] = useState(false);
   const [isBanMode, setIsBanMode] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Mock data - replace with actual API call
-  const users: User[] = [
-    {
-      id: "1",
-      firstName: "John",
-      middleName: "Smith",
-      lastName: "Doe",
-      suffix: "Jr.",
-      age: 28,
-      gender: "Male",
-      address: "123 Main Street, City, Country",
-      email: "john@example.com",
-      userType: "Employer",
-      status: "Active",
-      verificationStatus: "Pending"
-    },
-    {
-      id: "2",
-      firstName: "Jane",
-      middleName: "Marie",
-      lastName: "Smith",
-      suffix: "",
-      age: 32,
-      gender: "Female",
-      address: "456 Oak Avenue, Town, Country",
-      email: "jane@example.com",
-      userType: "Job-seeker",
-      status: "Active",
-      verificationStatus: "Pending"
-    },
-    {
-      id: "3",
-      firstName: "Mike",
-      middleName: "",
-      lastName: "Johnson",
-      suffix: "",
-      age: 35,
-      gender: "Male",
-      address: "789 Pine Road, City, Country",
-      email: "mike@example.com",
-      userType: "Employer",
-      status: "Active",
-      verificationStatus: "Verified"
-    },
-    {
-      id: "4",
-      firstName: "Sarah",
-      middleName: "Lee",
-      lastName: "Wilson",
-      suffix: "",
-      age: 29,
-      gender: "Female",
-      address: "321 Elm Street, Town, Country",
-      email: "sarah@example.com",
-      userType: "Job-seeker",
-      status: "Active",
-      verificationStatus: "Rejected"
-    },
-  ];
+  // Fetch users from the database
+  useEffect(() => {
+    const token = Cookies.get("access_token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fetchApplicants = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getAllApplicants();
+        // Transform the data to match our User interface
+        const transformedData = data.map(applicant => ({
+          id: applicant._id, // Map MongoDB _id to id for component use
+          firstName: applicant.firstName,
+          middleName: applicant.middleName,
+          lastName: applicant.lastName,
+          suffixName: applicant.suffixName,
+          age: applicant.age,
+          gender: applicant.gender,
+          barangay: applicant.barangay,
+          street: applicant.street,
+          houseNumber: applicant.houseNumber,
+          emailAddress: applicant.emailAddress,
+          userType: applicant.userType,
+          verificationStatus: applicant.verificationStatus as 'pending' | 'verified' | 'rejected',
+        }));
+        setUsers(transformedData);
+      } catch (err) {
+        console.error("Error fetching applicants:", err);
+        setError("Failed to load applicants. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApplicants();
+  }, [navigate]);
 
   const handleAccept = (user: User) => {
     setSelectedUser(user);
@@ -124,23 +111,69 @@ const VerificationPage = () => {
     setShowRejectModal(true);
   };
 
-  const handleConfirmAccept = () => {
+  const handleConfirmAccept = async () => {
     if (selectedUser) {
-      // TODO: Implement actual verification acceptance with API call
-      console.log(`Accepting verification for user: ${selectedUser.firstName} ${selectedUser.lastName}`);
-      setShowAcceptModal(false);
-      setShowSuccessPopup(true);
-      setTimeout(() => {
-        setShowSuccessPopup(false);
-      }, 2000);
+      try {
+        const response = await updateVerificationStatus(selectedUser.id, "verified");
+        // Update the local state
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user.id === selectedUser.id 
+              ? {...user, verificationStatus: "verified" as const} 
+              : user
+          )
+        );
+        setShowAcceptModal(false);
+        
+        // Set custom success message based on response and user type
+        if (response.message) {
+          setSuccessMessage(response.message);
+        } else if (selectedUser.userType.toLowerCase() === "job-seeker") {
+          setSuccessMessage(`${selectedUser.firstName}'s verification has been accepted and job-seeker account created!`);
+        } else {
+          setSuccessMessage(`${selectedUser.firstName}'s verification has been accepted and user account created!`);
+        }
+        
+        setShowSuccessPopup(true);
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+        }, 3000); // Extended to 3 seconds for longer messages
+      } catch (error) {
+        console.error("Error accepting verification:", error);
+        alert("Failed to accept verification. Please try again.");
+      }
     }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (selectedUser) {
-      // TODO: Implement actual verification rejection with API call
-      console.log(`Rejecting verification for user: ${selectedUser.firstName} ${selectedUser.lastName}`);
-      setShowRejectModal(false);
+      try {
+        const response = await updateVerificationStatus(selectedUser.id, "rejected");
+        // Update the local state
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user.id === selectedUser.id 
+              ? {...user, verificationStatus: "rejected" as const} 
+              : user
+          )
+        );
+        setShowRejectModal(false);
+        
+        // Set message from response or default
+        if (response.message) {
+          setSuccessMessage(response.message);
+        } else {
+          setSuccessMessage(`${selectedUser.firstName}'s verification has been rejected.`);
+        }
+        
+        setShowSuccessPopup(true);
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+        }, 3000);
+      } catch (error) {
+        console.error("Error rejecting verification:", error);
+        alert("Failed to reject verification. Please try again.");
+      }
     }
   };
 
@@ -189,11 +222,40 @@ const VerificationPage = () => {
     setSelectedUsers([]);
   };
 
+  // Helper function to map database user types to display types
+  const getUserTypeDisplay = (dbType: string): string => {
+    // Convert the database user type to display format
+    if (dbType.toLowerCase() === 'client') return 'Employer';
+    if (dbType.toLowerCase() === 'job-seeker') return 'Job-seeker';
+    return dbType.charAt(0).toUpperCase() + dbType.slice(1);
+  };
+
   const filteredUsers = users.filter(user => {
-    const matchesStatus = activeFilter === 'All' ? true : user.verificationStatus === activeFilter;
-    const matchesUserType = userTypeFilter === 'All' ? true : user.userType === userTypeFilter;
+    // Convert from camelCase status in the database to PascalCase for display
+    const statusMapping = {
+      'pending': 'Pending',
+      'verified': 'Verified',
+      'rejected': 'Rejected'
+    };
+    
+    const displayStatus = statusMapping[user.verificationStatus] as 'Pending' | 'Verified' | 'Rejected';
+    const matchesStatus = activeFilter === 'All' ? true : displayStatus === activeFilter;
+    
+    // Map the filter values to database values for comparison
+    let matchesUserType = false;
+    if (userTypeFilter === 'All') {
+      matchesUserType = true;
+    } else if (userTypeFilter === 'Employer') {
+      // If Employer is selected, match 'client' in the database
+      matchesUserType = user.userType.toLowerCase() === 'client';
+    } else if (userTypeFilter === 'Job-seeker') {
+      // If Job-seeker is selected, match 'job-seeker' in the database
+      matchesUserType = user.userType.toLowerCase() === 'job-seeker';
+    }
+    
     const matchesSearch = searchQuery === '' || 
-      `${user.firstName} ${user.middleName} ${user.lastName} ${user.email}`.toLowerCase().includes(searchQuery.toLowerCase());
+      `${user.firstName} ${user.middleName || ''} ${user.lastName} ${user.emailAddress}`.toLowerCase().includes(searchQuery.toLowerCase());
+    
     return matchesStatus && matchesUserType && matchesSearch;
   });
 
@@ -319,7 +381,18 @@ const VerificationPage = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {filteredUsers.length > 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">Loading applicants...</h3>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <XCircle className="h-12 w-12 text-red-500 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">Error</h3>
+              <p className="text-gray-500 text-center">{error}</p>
+            </div>
+          ) : filteredUsers.length > 0 ? (
             <Table>
               <TableHeader>
                 {isBanMode && (
@@ -355,28 +428,31 @@ const VerificationPage = () => {
                       </TableCell>
                     )}
                     <TableCell className="font-medium text-gray-900">
-                      {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffix ? ' ' + user.suffix : ''}`}
+                      {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}${user.suffixName ? ' ' + user.suffixName : ''}`}
                     </TableCell>
                     <TableCell className="text-gray-600">{user.age}</TableCell>
-                    <TableCell className="text-gray-600">{user.gender}</TableCell>
-                    <TableCell className="text-gray-600">{user.email}</TableCell>
+                    <TableCell className="text-gray-600">{user.gender.charAt(0).toUpperCase() + user.gender.slice(1)}</TableCell>
+                    <TableCell className="text-gray-600">{user.emailAddress}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        user.userType === 'Admin' ? 'bg-purple-100 text-purple-800' : 
-                        user.userType === 'Employer' ? 'bg-blue-100 text-blue-800' : 
-                        'bg-green-100 text-green-800'
+                        user.userType.toLowerCase() === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                        user.userType.toLowerCase() === 'client' ? 'bg-blue-100 text-blue-800' : 
+                        user.userType.toLowerCase() === 'job-seeker' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
-                        {user.userType}
+                        {/* Display 'Employer' for 'client' user type */}
+                        {getUserTypeDisplay(user.userType)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-gray-600">{user.address}</TableCell>
+                    <TableCell className="text-gray-600">{`${user.houseNumber ? user.houseNumber + ', ' : ''}${user.street}, ${user.barangay}`}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        user.verificationStatus === 'Verified' ? 'bg-green-100 text-green-800' :
-                        user.verificationStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
+                        user.verificationStatus === 'verified' ? 'bg-green-100 text-green-800' :
+                        user.verificationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {user.verificationStatus}
+                        {user.verificationStatus === 'verified' ? 'Verified' :
+                         user.verificationStatus === 'rejected' ? 'Rejected' : 'Pending'}
                       </span>
                     </TableCell>
                     <TableCell className="text-right space-x-3">
@@ -388,7 +464,7 @@ const VerificationPage = () => {
                         >
                           <Eye size={24} className="text-blue-600" />
                         </button>
-                        {user.verificationStatus === 'Pending' && (
+                        {user.verificationStatus === 'pending' && (
                           <>
                             <button 
                               className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
@@ -415,12 +491,12 @@ const VerificationPage = () => {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 px-4">
               <Users className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No users found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No applicants found</h3>
               <p className="text-gray-500 text-center">
                 {searchQuery ? (
-                  <>No users match your search criteria. Try adjusting your filters or search terms.</>
+                  <>No applicants match your search criteria. Try adjusting your filters or search terms.</>
                 ) : (
-                  <>No users match your selected filters. Try adjusting your filter criteria.</>
+                  <>No applicants match your selected filters. Try adjusting your filter criteria.</>
                 )}
               </p>
             </div>
@@ -533,7 +609,7 @@ const VerificationPage = () => {
         <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
           {selectedUsers.length > 0 
             ? `Successfully banned ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}!`
-            : 'User verification has been accepted successfully!'}
+            : successMessage}
         </div>
       )}
     </MainLayout>
