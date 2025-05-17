@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { Line } from "react-chartjs-2";
 import {
@@ -13,7 +12,13 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { getTotalUsers, getTotalJobs } from "../../services/home_api";
+import { 
+  getTotalUsers, 
+  getTotalJobs, 
+  getTotalApplicants, 
+  getMonthlyApplications, 
+  getMonthlyUsers 
+} from "../../services/home_api";
 
 ChartJS.register(
   CategoryScale,
@@ -29,14 +34,20 @@ export const HomePage = () => {
   const navigate = useNavigate();
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
+  const [totalApplicants, setTotalApplicants] = useState<number | null>(null);
+  const [monthlyApplicationsData, setMonthlyApplicationsData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [monthlyUsersData, setMonthlyUsersData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const token = Cookies.get("access_token");
+    const token = localStorage.getItem("authToken");
     if (!token) {
       navigate("/login");
     } else {
       const fetchData = async () => {
+        setIsLoading(true);
         try {
+          // Fetch total counts
           const usersData = await getTotalUsers();
           if (usersData && typeof usersData.total_users === "number") {
             setTotalUsers(usersData.total_users);
@@ -58,10 +69,45 @@ export const HomePage = () => {
             );
             setTotalJobs(0);
           }
+
+          const applicantsData = await getTotalApplicants();
+          if (applicantsData && typeof applicantsData.total_applicants === "number") {
+            setTotalApplicants(applicantsData.total_applicants);
+          } else {
+            console.error(
+              "Invalid data format received for total applicants:",
+              applicantsData
+            );
+            setTotalApplicants(0);
+          }
+
+          // Fetch monthly data for charts
+          const monthlyApps = await getMonthlyApplications();
+          if (monthlyApps && monthlyApps.monthly_data) {
+            setMonthlyApplicationsData(monthlyApps.monthly_data);
+          } else {
+            console.error(
+              "Invalid data format received for monthly applications:",
+              monthlyApps
+            );
+          }
+
+          const monthlyUsers = await getMonthlyUsers();
+          if (monthlyUsers && monthlyUsers.monthly_data) {
+            setMonthlyUsersData(monthlyUsers.monthly_data);
+          } else {
+            console.error(
+              "Invalid data format received for monthly users:",
+              monthlyUsers
+            );
+          }
         } catch (error) {
           console.error("Failed to fetch dashboard data:", error);
           setTotalUsers(0);
           setTotalJobs(0);
+          setTotalApplicants(0);
+        } finally {
+          setIsLoading(false);
         }
       };
       fetchData();
@@ -88,7 +134,7 @@ export const HomePage = () => {
     datasets: [
       {
         label: "Applications",
-        data: [65, 59, 80, 81, 56, 55, 40, 45, 60, 75, 85, 90],
+        data: isLoading ? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] : monthlyApplicationsData,
         borderColor: 'rgb(99, 102, 241)',
         backgroundColor: 'rgba(99, 102, 241, 0.1)',
         tension: 0.4,
@@ -102,8 +148,7 @@ export const HomePage = () => {
     datasets: [
       {
         label: "Users",
-        data: [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85],
-
+        data: isLoading ? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] : monthlyUsersData,
         borderColor: 'rgb(16, 185, 129)',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         tension: 0.4,
@@ -198,7 +243,9 @@ export const HomePage = () => {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-600 truncate">Total Applications</dt>
-                    <dd className="text-3xl font-bold text-gray-900">2,345</dd>
+                    <dd className="text-3xl font-bold text-gray-900">
+                      {totalApplicants === null ? "Loading..." : totalApplicants}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -206,22 +253,36 @@ export const HomePage = () => {
           </div>
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Monthly Charts */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Applications Chart */}
-          <div className="bg-white shadow-lg rounded-xl p-6 transition-all duration-300 hover:shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Monthly Applications</h3>
-            <div className="h-[300px]">
-              <Line options={chartOptions} data={applicationsData} />
+          <div className="bg-white p-6 rounded-xl shadow-lg overflow-hidden">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Monthly Applications</h2>
+            <div className="relative" style={{ minHeight: "300px" }}>
+              {isLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
+                </div>
+              ) : (
+                <Line data={applicationsData} options={chartOptions} />
+              )}
             </div>
+            <p className="text-sm text-gray-500 mt-2">Monthly application count trends</p>
           </div>
 
           {/* Users Chart */}
-          <div className="bg-white shadow-lg rounded-xl p-6 transition-all duration-300 hover:shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Monthly Users</h3>
-            <div className="h-[300px]">
-              <Line options={chartOptions} data={usersData} />
+          <div className="bg-white p-6 rounded-xl shadow-lg overflow-hidden">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Monthly Verified Users</h2>
+            <div className="relative" style={{ minHeight: "300px" }}>
+              {isLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div>
+                </div>
+              ) : (
+                <Line data={usersData} options={chartOptions} />
+              )}
             </div>
+            <p className="text-sm text-gray-500 mt-2">Monthly verified user count trends</p>
           </div>
         </div>
       </div>
