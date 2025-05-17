@@ -53,7 +53,9 @@ export const updateVerificationStatus = async (
   }
 };
 
-export const getApplicantById = async (applicantId: string): Promise<ApplicantData> => {
+export const getApplicantById = async (
+  applicantId: string
+): Promise<ApplicantData> => {
   try {
     const response = await axios.get(`${baseUrl}/get_applicant/${applicantId}`);
     return response.data;
