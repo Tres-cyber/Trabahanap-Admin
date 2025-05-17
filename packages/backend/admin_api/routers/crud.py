@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs, Applicant, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData
-from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token
+from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_active_admin
 from datetime import datetime, timedelta
 
-router = APIRouter()
-
+router = APIRouter(
+    # prefix="/admin", # Removed: This prefix is now handled in main.py
+    tags=["admin"]    
+)
 
 
 @router.post("/create", response_model=Admin)
@@ -291,4 +293,6 @@ async def get_monthly_users():
         raise HTTPException(status_code=500, detail=f"Error getting monthly users: {str(e)}")
 
 
-
+@router.get("/me", response_model=Admin)
+async def read_admin_me(current_admin: Admin = Depends(get_current_active_admin)):
+    return current_admin

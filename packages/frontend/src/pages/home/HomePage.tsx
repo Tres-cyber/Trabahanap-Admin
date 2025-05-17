@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { Line } from "react-chartjs-2";
 import {
@@ -41,7 +40,7 @@ export const HomePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const token = Cookies.get("access_token");
+    const token = localStorage.getItem("authToken");
     if (!token) {
       navigate("/login");
     } else {

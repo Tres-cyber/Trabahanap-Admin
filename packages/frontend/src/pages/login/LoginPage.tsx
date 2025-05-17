@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import { login } from "../../services/auth";
 
 export const LoginPage = () => {
@@ -10,7 +9,7 @@ export const LoginPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = Cookies.get("access_token");
+    const token = localStorage.getItem("authToken");
     if (token) {
       navigate("/");
     }
@@ -23,13 +22,17 @@ export const LoginPage = () => {
     try {
       const data = await login(email, password);
 
-      if (data.access_token && data.refresh_token) {
-        Cookies.set("access_token", data.access_token, { expires: 3 });
-        Cookies.set("refresh_token", data.refresh_token, { expires: 30 });
-
+      if (data && data.access_token && data.refresh_token) {
+        
+        localStorage.setItem("authToken", data.access_token);
+        localStorage.setItem("refreshToken", data.refresh_token);
+        
         navigate("/");
+        // This log might not appear if navigation causes immediate unmount, which is normal.
+        // console.log(">>> LoginPage: navigate('/') CALLED. Current window path AFTER navigate call (check browser URL bar for actual change):", window.location.pathname);
+
       } else {
-        setError("Login failed: Invalid response from server.");
+        setError("Login failed: Invalid response from server or missing tokens.");
       }
     } catch (err: any) {
       console.error("Login failed:", err);
