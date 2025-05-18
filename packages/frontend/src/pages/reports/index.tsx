@@ -1,5 +1,21 @@
-import React, { useState } from 'react';
-import { Search, CheckCircle, XCircle, Eye, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  CheckCircle,
+  XCircle,
+  Eye,
+  AlertCircle,
+  CheckCircle2, // For status icons
+  ListFilter, // For filter dropdown icon
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
 import {
   Select,
   SelectContent,
@@ -7,330 +23,561 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { MainLayout } from '../../components/layout/MainLayout';
-import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import { MainLayout } from "../../components/layout/MainLayout";
+import { Input } from "../../components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
-
-// Mock data for reports
-const mockReports = [
-  {
-    id: 1,
-    reporter: 'John Doe',
-    reportedUser: 'Jane Smith',
-    reason: 'Inappropriate content',
-    type: 'User',
-    status: 'Pending',
-    date: '2024-03-15',
-  },
-  {
-    id: 2,
-    reporter: 'Alice Johnson',
-    reportedUser: 'Bob Wilson',
-    reason: 'Spam behavior',
-    type: 'User',
-    status: 'Resolved',
-    date: '2024-03-14',
-  },
-  {
-    id: 3,
-    reporter: 'Mike Brown',
-    reportedUser: 'Post #123',
-    reason: 'Offensive language',
-    type: 'User',
-    status: 'Resolved',
-    date: '2024-03-13',
-  },
-];
+import {
+  getAllReports,
+  approveReport,
+  rejectReport,
+  Report,
+} from "../../services/reportsApi";
 
 const ReportsPage: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedReport, setSelectedReport] = useState<typeof mockReports[0] | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // Default to all
+  const [reports, setReports] = useState<Report[]>([]);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const allReports = await getAllReports(); // Fetch all reports
+        setReports(allReports);
+      } catch (err) {
+        setError(
+          "Failed to fetch reports. Please ensure the backend is running and reachable."
+        );
+        console.error(err);
+        setReports([]); // Clear reports on error
+      }
+      setIsLoading(false);
+    };
+    fetchReports();
+  }, []); // Empty dependency array: fetch only on mount
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'resolved':
-        return 'bg-green-100 text-green-800';
-      case 'under review':
-        return 'bg-blue-100 text-blue-800';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      // Removed 'under review' and 'resolved' as they are not standard backend statuses
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Filter reports based on search term and status
-  const filteredReports = mockReports.filter(report => {
-    const matchesSearch = searchTerm === '' || 
-      Object.values(report).some(value => 
-        value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    
-    const matchesStatus = statusFilter === 'all' || 
-      report.status.toLowerCase() === statusFilter.toLowerCase();
+  const filteredReports = reports.filter((report) => {
+    const reportValuesForSearch = [
+      report.id,
+      report.reporter, // Keep original ID for search
+      report.reporterName || "", // Add name for search
+      report.reportedObjectId, // Keep original ID for search
+      report.reportedObjectName || "", // Add name for search
+      report.reason,
+      report.status,
+      report.dateReported,
+      report.dateApproved || "", // Include dateApproved in search if it exists
+    ]
+      .join(" ")
+      .toLowerCase();
 
+    const matchesSearch =
+      searchTerm === "" ||
+      reportValuesForSearch.includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" || // 'all' may not be used if only pending are fetched initially
+      report.status.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewReport = (report: typeof mockReports[0]) => {
+  const handleViewReport = (report: Report) => {
     setSelectedReport(report);
     setShowViewModal(true);
   };
 
-  const handleAcceptReport = (report: typeof mockReports[0]) => {
+  const handleAcceptReport = (report: Report) => {
     setSelectedReport(report);
     setShowAcceptModal(true);
   };
 
-  const handleRejectReport = (report: typeof mockReports[0]) => {
+  const handleRejectReport = (report: Report) => {
     setSelectedReport(report);
     setShowRejectModal(true);
   };
 
-  const handleConfirmAccept = () => {
-    // TODO: Implement accept logic
-    setShowAcceptModal(false);
+  const handleConfirmAccept = async () => {
+    if (!selectedReport) return;
+    setIsLoading(true);
+    try {
+      const approvedReportData = await approveReport(selectedReport.id);
+      // Update the report in the local list
+      setReports((prevReports) =>
+        prevReports.map((r) =>
+          r.id === selectedReport.id
+            ? { ...r, status: "approved", dateApproved: approvedReportData.dateApproved }
+            : r
+        )
+      );
+      setShowAcceptModal(false);
+      setSelectedReport(null);
+    } catch (err) {
+      setError("Failed to approve report.");
+      console.error(err);
+    }
+    setIsLoading(false);
   };
 
-  const handleConfirmReject = () => {
-    // TODO: Implement reject logic
-    setShowRejectModal(false);
+  const handleConfirmReject = async () => {
+    if (!selectedReport) return;
+    setIsLoading(true);
+    try {
+      await rejectReport(selectedReport.id);
+      // Update the report in the local list
+      setReports((prevReports) =>
+        prevReports.map((r) =>
+          r.id === selectedReport.id ? { ...r, status: "rejected" } : r
+        )
+      );
+      setShowRejectModal(false);
+      setSelectedReport(null);
+    } catch (err) {
+      setError("Failed to reject report.");
+      console.error(err);
+    }
+    setIsLoading(false);
   };
 
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">User Reports</h1>
+        <h1 className="text-3xl font-bold mb-6">User Reports Management</h1>
+
+        {error && (
+          <div
+            className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
 
         {/* Filters and Search */}
         <div className="mb-6 flex items-center space-x-4">
-          <div className="relative w-[300px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search reports..."
+              placeholder="Search reports... (ID, reason, etc.)"
+              className="pl-10 w-full bg-white border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white border-gray-200 focus:ring-2 focus:ring-[#0B153C] focus:border-[#0B153C]"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] bg-white border-gray-200 hover:bg-gray-50 focus:ring-2 focus:ring-[#0B153C] focus:border-[#0B153C]">
-              <SelectValue placeholder="Select Status" />
+            <SelectTrigger className="w-[200px] bg-white border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+              <ListFilter className="w-4 h-4 mr-2 text-gray-500" />
+              <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
-              <SelectItem value="all" className="hover:bg-gray-50 cursor-pointer bg-white">
+            <SelectContent>
+              <SelectItem
+                value="all"
+                className="hover:bg-gray-50 cursor-pointer bg-white"
+              >
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  <svg
+                    className="w-4 h-4 text-gray-500"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  All Status
+                  All Statuses
                 </span>
               </SelectItem>
-              <SelectItem value="pending" className="hover:bg-gray-50 cursor-pointer bg-white">
+              <SelectItem
+                value="pending"
+                className="hover:bg-gray-50 cursor-pointer bg-white"
+              >
                 <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-yellow-500" />
+                  <AlertCircle className="w-4 h-4 text-yellow-500" />
                   Pending
                 </span>
               </SelectItem>
-              <SelectItem value="under review" className="hover:bg-gray-50 cursor-pointer bg-white">
-                <span className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-blue-500" />
-                  Under Review
-                </span>
-              </SelectItem>
-              <SelectItem value="resolved" className="hover:bg-gray-50 cursor-pointer bg-white">
+              <SelectItem
+                value="approved"
+                className="hover:bg-gray-50 cursor-pointer bg-white"
+              >
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  Resolved
+                  Approved
+                </span>
+              </SelectItem>
+              <SelectItem
+                value="rejected"
+                className="hover:bg-gray-50 cursor-pointer bg-white"
+              >
+                <span className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  Rejected
                 </span>
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Reports Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {filteredReports.length > 0 ? (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reporter</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reported</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            <p className="ml-4 text-gray-700">Loading reports...</p>
+          </div>
+        )}
+
+        {/* No Reports Message (handles empty after load, or error) */}
+        {!isLoading && !error && filteredReports.length === 0 && (
+          <div className="text-center py-12">
+            <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              No reports found
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {searchTerm || statusFilter !== "all"
+                ? "Try adjusting your search or filter."
+                : "There are no reports currently."}
+            </p>
+          </div>
+        )}
+
+        {/* Reports Table - Render only if not loading, no error, and reports exist */}
+        {!isLoading && !error && filteredReports.length > 0 && (
+          <div className="overflow-x-auto shadow-md rounded-lg">
+            <Table className="min-w-full divide-y divide-gray-200">
+              <TableHeader className="bg-gray-50">
+                <TableRow>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Report ID
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reporter
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reported Object
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reason
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date Reported
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="bg-white divide-y divide-gray-200">
                 {filteredReports.map((report) => (
-                  <tr key={report.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reporter}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reportedUser}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reason}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(report.status)}`}>
+                  <TableRow key={report.id} className="hover:bg-gray-50">
+                    <TableCell
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs"
+                      title={report.id}
+                    >
+                      {report.id}
+                    </TableCell>
+                    <TableCell
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs"
+                      title={report.reporterName || report.reporter}
+                    >
+                      {report.reporterName || report.reporter}
+                    </TableCell>
+                    <TableCell
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs"
+                      title={
+                        report.reportedObjectName || report.reportedObjectId
+                      }
+                    >
+                      {report.reportedObjectName || report.reportedObjectId}
+                    </TableCell>
+                    <TableCell
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-md"
+                      title={report.reason}
+                    >
+                      {report.reason}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                          report.status
+                        )}`}
+                      >
                         {report.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    </TableCell>
+                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(report.dateReported).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 whitespace-nowrap">
                       <div className="flex space-x-3">
-                        <button 
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
-                          title="View Details"
+                        <button
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                          title="View Report"
                           onClick={() => handleViewReport(report)}
+                          disabled={isLoading}
                         >
                           <Eye size={24} className="text-blue-600" />
                         </button>
-                        <button 
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
-                          title="Approve"
-                          onClick={() => handleAcceptReport(report)}
-                        >
-                          <CheckCircle size={24} className="text-green-600" />
-                        </button>
-                        <button 
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
-                          title="Reject"
-                          onClick={() => handleRejectReport(report)}
-                        >
-                          <XCircle size={24} className="text-red-600" />
-                        </button>
+                        {report.status === "pending" && (
+                          <>
+                            <button
+                              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                              title="Approve Report"
+                              onClick={() => handleAcceptReport(report)}
+                              disabled={isLoading}
+                            >
+                              <CheckCircle
+                                size={24}
+                                className="text-green-600"
+                              />
+                            </button>
+                            <button
+                              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                              title="Reject Report"
+                              onClick={() => handleRejectReport(report)}
+                              disabled={isLoading}
+                            >
+                              <XCircle size={24} className="text-red-600" />
+                            </button>
+                          </>
+                        )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 px-4">
-              <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No reports found</h3>
-              <p className="text-gray-500 text-center">
-                {searchTerm ? (
-                  <>No reports match your search criteria. Try adjusting your filters or search terms.</>
-                ) : (
-                  <>No reports match your selected filters. Try adjusting your filter criteria.</>
-                )}
-              </p>
-            </div>
-          )}
-        </div>
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* Modals */}
+        <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+          <DialogContent className="bg-white border-none shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Report Details
+              </DialogTitle>
+            </DialogHeader>
+            {selectedReport && (
+              <div className="py-4 space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Report ID
+                  </h3>
+                  <p className="text-base text-gray-900 mt-1">
+                    {selectedReport.id}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Reporter
+                  </h3>
+                  <p className="text-base text-gray-900 mt-1">
+                    {selectedReport.reporterName || selectedReport.reporter}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Reported Object
+                  </h3>
+                  <p className="text-base text-gray-900 mt-1">
+                    {selectedReport.reportedObjectName ||
+                      selectedReport.reportedObjectId}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Reason</h3>
+                  <p className="text-base text-gray-900 mt-1 break-all">
+                    {selectedReport.reason}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Date Reported
+                  </h3>
+                  <p className="text-base text-gray-900 mt-1">
+                    {new Date(selectedReport.dateReported).toLocaleString()}
+                  </p>
+                </div>
+                {selectedReport.status === "approved" &&
+                  selectedReport.dateApproved && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">
+                        Date Approved
+                      </h3>
+                      <p className="text-base text-gray-900 mt-1">
+                        {new Date(selectedReport.dateApproved).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                  <span
+                    className={`inline-block mt-1 px-2 py-1 text-xs rounded-full ${getStatusColor(
+                      selectedReport.status
+                    )}`}
+                  >
+                    {selectedReport.status}
+                  </span>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowViewModal(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Accept Report Modal */}
+        <Dialog open={showAcceptModal} onOpenChange={setShowAcceptModal}>
+          <DialogContent className="bg-white border-none shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Approve Report
+              </DialogTitle>
+            </DialogHeader>
+            {selectedReport && (
+              <div className="py-4 space-y-4">
+                <p className="text-gray-600">
+                  Are you sure you want to approve this report? This action will
+                  mark the report as approved and create a final record.
+                </p>
+                <div className="space-y-2 p-2 border rounded-md bg-gray-50">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Report Details:
+                  </h3>
+                  <p className="text-sm text-gray-900">
+                    <strong>ID:</strong> {selectedReport.id}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <strong>Reporter:</strong>{" "}
+                    {selectedReport.reporterName || selectedReport.reporter}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <strong>Reported Object:</strong>{" "}
+                    {selectedReport.reportedObjectName ||
+                      selectedReport.reportedObjectId}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <strong>Reason:</strong> {selectedReport.reason}
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAcceptModal(false)}
+                    className="mr-2"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmAccept}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Approving..." : "Approve Report"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Reject Report Modal */}
+        <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+          <DialogContent className="bg-white border-none shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Reject Report
+              </DialogTitle>
+            </DialogHeader>
+            {selectedReport && (
+              <div className="py-4 space-y-4">
+                <p className="text-gray-600">
+                  Are you sure you want to reject this report? This action will
+                  mark the report as rejected. No further action will be taken
+                  against the reported user/content based on this report.
+                </p>
+                <div className="space-y-2 p-2 border rounded-md bg-gray-50">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Report Details:
+                  </h3>
+                  <p className="text-sm text-gray-900">
+                    <strong>ID:</strong> {selectedReport.id}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <strong>Reporter:</strong>{" "}
+                    {selectedReport.reporterName || selectedReport.reporter}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <strong>Reported Object:</strong>{" "}
+                    {selectedReport.reportedObjectName ||
+                      selectedReport.reportedObjectId}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    <strong>Reason:</strong> {selectedReport.reason}
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRejectModal(false)}
+                    className="mr-2"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmReject}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Rejecting..." : "Reject Report"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* View Report Modal */}
-      <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-        <DialogContent className="bg-white border-none shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">Report Details</DialogTitle>
-          </DialogHeader>
-          {selectedReport && (
-            <div className="py-4 space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Reporter</h3>
-                <p className="text-base text-gray-900 mt-1">{selectedReport.reporter}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Reason</h3>
-                <p className="text-base text-gray-900 mt-1">{selectedReport.reason}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Date Reported</h3>
-                <p className="text-base text-gray-900 mt-1">{selectedReport.date}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                <span className={`inline-block mt-1 px-2 py-1 text-xs rounded-full ${getStatusColor(selectedReport.status)}`}>
-                  {selectedReport.status}
-                </span>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Accept Report Modal */}
-      <Dialog open={showAcceptModal} onOpenChange={setShowAcceptModal}>
-        <DialogContent className="bg-white border-none shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">Accept Report</DialogTitle>
-          </DialogHeader>
-          {selectedReport && (
-            <div className="py-4 space-y-4">
-              <p className="text-gray-600">
-                Are you sure you want to accept this report? This action will mark the report as resolved and may take appropriate action against the reported user/content.
-              </p>
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
-                <p className="text-sm text-gray-900">Reporter: {selectedReport.reporter}</p>
-                <p className="text-sm text-gray-900">Reason: {selectedReport.reason}</p>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAcceptModal(false)}
-                  className="mr-2"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleConfirmAccept}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Accept Report
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject Report Modal */}
-      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-        <DialogContent className="bg-white border-none shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">Reject Report</DialogTitle>
-          </DialogHeader>
-          {selectedReport && (
-            <div className="py-4 space-y-4">
-              <p className="text-gray-600">
-                Are you sure you want to reject this report? This action will mark the report as resolved and no action will be taken against the reported user/content.
-              </p>
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
-                <p className="text-sm text-gray-900">Reporter: {selectedReport.reporter}</p>
-                <p className="text-sm text-gray-900">Reason: {selectedReport.reason}</p>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRejectModal(false)}
-                  className="mr-2"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleConfirmReject}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Reject Report
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </MainLayout>
   );
 };
 
-export default ReportsPage; 
+export default ReportsPage;

@@ -16,28 +16,16 @@ app = FastAPI(lifespan=lifespan)
 # CORS Configuration
 origins = [
     "http://localhost:5173",
-    "http://localhost:3000"
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,  
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  
-    allow_headers=["Authorization", "Content-Type"],  
+    allow_credentials=True,  # Important for sending auth token
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Be specific
+    allow_headers=["Authorization", "Content-Type"],  # Allow necessary headers
 )
 
 
 app.include_router(crud.router, prefix="/admin", tags=["admin"])
-
-
-
-
-
-
-
-
-
-
-
-

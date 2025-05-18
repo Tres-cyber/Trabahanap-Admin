@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
-from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs, Applicant, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData
+from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs, Applicant, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData, ReportValidation, FinalReport, ReportResponse
 from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_active_admin
 from datetime import datetime, timedelta
+from beanie import PydanticObjectId
+from typing import List
 
 router = APIRouter(
-    # prefix="/admin", # Removed: This prefix is now handled in main.py
+    # prefix="/admin", 
     tags=["admin"]    
 )
 
@@ -28,7 +30,7 @@ async def login(login_data: LoginRequest):
     if not verify_password(login_data.password, admin.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    access_token_data = {"sub": admin.email} # Using email as the subject
+    access_token_data = {"sub": admin.email} 
     access_token = create_access_token(data=access_token_data)
     refresh_token_data = {"sub": admin.email}
     refresh_token = create_refresh_token(data=refresh_token_data)
@@ -64,22 +66,17 @@ async def get_all_applicants():
 @router.get("/get_applicant/{applicant_id}")
 async def get_applicant(applicant_id: str):
     try:
-        # Get the applicant by ID
         applicant = await Applicant.get(applicant_id)
         if not applicant:
             raise HTTPException(status_code=404, detail="Applicant not found")
         return applicant
     except Exception as e:
-        # Log the error
         print(f"Error fetching applicant {applicant_id}: {str(e)}")
-        # Re-raise for client
         raise HTTPException(status_code=500, detail=f"Error fetching applicant: {str(e)}")
-
 
 
 @router.put("/update_verification_status/{applicant_id}")
 async def update_verification_status(applicant_id: str, status: str):
-    # Get the applicant
     applicant = await Applicant.get(applicant_id)
     if not applicant:
         raise HTTPException(status_code=404, detail="Applicant not found")
@@ -87,17 +84,13 @@ async def update_verification_status(applicant_id: str, status: str):
     if status not in ["pending", "verified", "rejected"]:
         raise HTTPException(status_code=400, detail="Invalid status value")
     
-    # Update verification_status
     applicant.verification_status = status
     await applicant.save()
     
-    # If rejected, just update the status
     if status == "rejected":
         return {"status": "success", "message": f"Applicant verification rejected"}
     
-    # If verified, create appropriate records based on applicant type
     if status == "verified":
-        # Create a new user from the applicant data (common for all types)
         user = User(
             first_name=applicant.first_name,
             middle_name=applicant.middle_name,
@@ -107,7 +100,7 @@ async def update_verification_status(applicant_id: str, status: str):
             birth_date=applicant.birth_date,
             age=applicant.age,
             email=applicant.email,
-            password=applicant.password,  # Password is already hashed from the applicant record
+            password=applicant.password,  
             profile_picture=applicant.profile_picture,
             barangay=applicant.barangay,
             street=applicant.street,
@@ -121,36 +114,26 @@ async def update_verification_status(applicant_id: str, status: str):
             verification_status="verified"
         )
         
-        # Insert the user
         await user.insert()
         
-        # For job-seeker type applicants, create a JobSeeker record and transfer data
         if applicant.user_type.lower() == "job-seeker":
-            # Access MongoDB directly through Beanie's motor client to bypass validation issues
             db = ApplicantJobSeeker.get_motor_collection().database
             
-            # Try different ways to find the applicant_jobseeker record
-            # First try with string ID
             applicant_job_seeker_data = await db.applicant_jobseeker.find_one({"applicantId": str(applicant.id)})
             
-            # If not found, try with raw ID
             if not applicant_job_seeker_data:
                 applicant_job_seeker_data = await db.applicant_jobseeker.find_one({"applicantId": applicant.id})
                 
-                # If still not found, try manual search
                 if not applicant_job_seeker_data:
-                    # Get all applicant job seekers
                     all_seekers_data = await db.applicant_jobseeker.find({}).to_list(length=100)
                     applicant_id_str = str(applicant.id)
                     
-                    # Look for a match with either string or raw ID
                     for seeker in all_seekers_data:
                         seeker_applicant_id = seeker.get('applicantId')
                         if seeker_applicant_id and (seeker_applicant_id == applicant_id_str or str(seeker_applicant_id) == applicant_id_str):
                             applicant_job_seeker_data = seeker
                             break
             
-            # If we found an applicant_jobseeker record, create a JobSeeker record with its data
             if applicant_job_seeker_data:
                 job_seeker = JobSeeker(
                     user_id=str(user.id),
@@ -161,7 +144,6 @@ async def update_verification_status(applicant_id: str, status: str):
                     job_tags=applicant_job_seeker_data.get('jobTags', [])
                 )
                 
-                # Save job seeker record
                 await job_seeker.insert()
                 
                 return {
@@ -169,7 +151,6 @@ async def update_verification_status(applicant_id: str, status: str):
                     "message": f"Job-seeker verification approved, user and job-seeker profiles created"
                 }
             else:
-                # No applicant_job_seeker found, create a JobSeeker with default values
                 job_seeker = JobSeeker(
                     user_id=str(user.id),
                     joined_at=datetime.utcnow(),
@@ -179,62 +160,45 @@ async def update_verification_status(applicant_id: str, status: str):
                     job_tags=[]
                 )
                 
-                # Save the job seeker
                 await job_seeker.insert()
                 
-                # Return success message
                 return {
                     "status": "success", 
                     "message": f"Job-seeker verification approved, but no job tags found"
                 }
         
-        # For regular client users, just return success message
         return {"status": "success", "message": f"Client verification approved and user account created"}
     
-    # Default response (should not reach here)
     return {"status": "success", "message": f"Verification status updated to {status}"}
 
 
 @router.get("/get_monthly_applications", response_model=MonthlyData)
 async def get_monthly_applications():
     try:
-        # Get the current month and year
         current_date = datetime.now()
         
-        # Initialize counts list (one entry per month for the last 12 months)
         monthly_counts = [0] * 12
         
-        # Get all applicants - we'll process them in memory for more reliable results
         all_applicants = await Applicant.find_all().to_list()
         print(f"Total applicants found: {len(all_applicants)}")
         
-        # For each of the past 12 months, count applications in that month
         for i in range(12):
-            # Calculate the month we're looking at (current month - i)
             month = (current_date.month - i - 1) % 12 + 1
             year = current_date.year if current_date.month > i else current_date.year - 1
             
-            # Set start date to first day of month at 00:00:00
             start_date = datetime(year, month, 1, 0, 0, 0)
             
-            # Set end date to first day of next month at 00:00:00
             if month == 12:
                 end_date = datetime(year + 1, 1, 1, 0, 0, 0)
             else:
                 end_date = datetime(year, month + 1, 1, 0, 0, 0)
             
-            # Count applicants joined in this date range
             count = 0
             for applicant in all_applicants:
                 if applicant.joined_at and start_date <= applicant.joined_at < end_date:
                     count += 1
             
-            
-            # No sample data - using only real data from database
-            
-            # Store count in proper order (current month at its actual position in the year)
-            month_index = month - 1  # Convert 1-based month to 0-based index (Jan=0, Feb=1, etc)
-            monthly_counts[month_index] = count
+            monthly_counts[month - 1] = count
         
         return {"monthly_data": monthly_counts}
         
@@ -246,45 +210,32 @@ async def get_monthly_applications():
 @router.get("/get_monthly_users", response_model=MonthlyData)
 async def get_monthly_users():
     try:
-        # Get the current month and year
         current_date = datetime.now()
         
-        # Initialize counts list (one entry per month for the last 12 months)
         monthly_counts = [0] * 12
         
-        # Get all users - we'll process them in memory for more reliable results
         all_users = await User.find_all().to_list()
         print(f"Total users found: {len(all_users)}")
         
-        # For each of the past 12 months, count users verified in that month
         for i in range(12):
-            # Calculate the month we're looking at (current month - i)
             month = (current_date.month - i - 1) % 12 + 1
             year = current_date.year if current_date.month > i else current_date.year - 1
             
-            # Set start date to first day of month at 00:00:00
             start_date = datetime(year, month, 1, 0, 0, 0)
             
-            # Set end date to first day of next month at 00:00:00
             if month == 12:
                 end_date = datetime(year + 1, 1, 1, 0, 0, 0)
             else:
                 end_date = datetime(year, month + 1, 1, 0, 0, 0)
             
-            # Count users verified in this date range
             count = 0
             for user in all_users:
                 if hasattr(user, 'verified_at') and user.verified_at and start_date <= user.verified_at < end_date:
                     count += 1
                     
-            # Debug information
             print(f"Month {month}/{year}: {count} verified users")
             
-            # No sample data - using only real data from database
-            
-            # Store count in proper order (current month at its actual position in the year)
-            month_index = month - 1  # Convert 1-based month to 0-based index (Jan=0, Feb=1, etc)
-            monthly_counts[month_index] = count
+            monthly_counts[month - 1] = count
         
         return {"monthly_data": monthly_counts}
         
@@ -296,3 +247,142 @@ async def get_monthly_users():
 @router.get("/me", response_model=Admin)
 async def read_admin_me(current_admin: Admin = Depends(get_current_active_admin)):
     return current_admin
+
+
+# --- Report Management Endpoints --- 
+
+@router.get("/api/reports/pending", response_model=List[ReportResponse], summary="Get Pending User Reports")
+async def get_pending_reports(current_admin: Admin = Depends(get_current_active_admin)):
+    pending_reports_docs = await ReportValidation.find(ReportValidation.status == "pending").to_list()
+    
+    response_reports = []
+    for report_doc in pending_reports_docs:
+        reporter_name_str = "N/A"  # Default value
+        reported_object_name_str = "N/A"  # Default value
+
+        # Fetch reporter's name
+        if report_doc.reporter: # This is a PydanticObjectId
+            reporter_user = await User.get(report_doc.reporter) # User.get() takes PydanticObjectId
+            if reporter_user:
+                name_parts = []
+                if reporter_user.first_name: name_parts.append(reporter_user.first_name)
+                if reporter_user.middle_name: name_parts.append(reporter_user.middle_name)
+                if reporter_user.last_name: name_parts.append(reporter_user.last_name)
+                if reporter_user.suffix_name: name_parts.append(reporter_user.suffix_name)
+                name = " ".join(name_parts).strip()
+                reporter_name_str = name if name else f"User ID: {str(reporter_user.id)}"
+
+        # Fetch reported object's name (assuming it's a User)
+        if report_doc.reported_object_id: # This is a PydanticObjectId
+            reported_user = await User.get(report_doc.reported_object_id)
+            if reported_user:
+                name_parts = []
+                if reported_user.first_name: name_parts.append(reported_user.first_name)
+                if reported_user.middle_name: name_parts.append(reported_user.middle_name)
+                if reported_user.last_name: name_parts.append(reported_user.last_name)
+                if reported_user.suffix_name: name_parts.append(reported_user.suffix_name)
+                name = " ".join(name_parts).strip()
+                reported_object_name_str = name if name else f"User ID: {str(reported_user.id)}"
+        
+        # Construct ReportResponse using aliased keys for fields that have them
+        report_response_entry = ReportResponse(
+            id=report_doc.id,  # 'id' has no alias in ReportResponse
+            reportedObjectId=report_doc.reported_object_id, # Alias is reportedObjectId
+            reporter=report_doc.reporter, # 'reporter' has no alias
+            reason=report_doc.reason,
+            status=report_doc.status,
+            dateReported=report_doc.date_reported, # Alias is dateReported
+            dateApproved=report_doc.date_approved, # Alias is dateApproved
+            reporterName=reporter_name_str, # Alias is reporterName
+            reportedObjectName=reported_object_name_str # Alias is reportedObjectName
+        )
+        response_reports.append(report_response_entry)
+            
+    return response_reports
+
+@router.get("/api/reports/all", response_model=List[ReportResponse], summary="Get All User Reports")
+async def get_all_reports(current_admin: Admin = Depends(get_current_active_admin)):
+    all_report_docs = await ReportValidation.find_all().to_list()
+    response_reports: List[ReportResponse] = []
+
+    for report_doc in all_report_docs:
+        reporter_name_str = "N/A"
+        reported_object_name_str = "N/A"
+
+        if report_doc.reporter:
+            reporter_user = await User.get(report_doc.reporter)
+            if reporter_user:
+                name_parts = []
+                if reporter_user.first_name: name_parts.append(reporter_user.first_name)
+                if reporter_user.middle_name: name_parts.append(reporter_user.middle_name)
+                if reporter_user.last_name: name_parts.append(reporter_user.last_name)
+                if reporter_user.suffix_name: name_parts.append(reporter_user.suffix_name)
+                name = " ".join(name_parts).strip()
+                reporter_name_str = name if name else f"User ID: {str(reporter_user.id)}"
+
+        if report_doc.reported_object_id:
+            reported_user = await User.get(report_doc.reported_object_id)
+            if reported_user:
+                name_parts = []
+                if reported_user.first_name: name_parts.append(reported_user.first_name)
+                if reported_user.middle_name: name_parts.append(reported_user.middle_name)
+                if reported_user.last_name: name_parts.append(reported_user.last_name)
+                if reported_user.suffix_name: name_parts.append(reported_user.suffix_name)
+                name = " ".join(name_parts).strip()
+                reported_object_name_str = name if name else f"User ID: {str(reported_user.id)}"
+        
+        report_response_entry = ReportResponse(
+            id=report_doc.id,
+            reportedObjectId=report_doc.reported_object_id,
+            reporter=report_doc.reporter,
+            reason=report_doc.reason,
+            status=report_doc.status,
+            dateReported=report_doc.date_reported,
+            dateApproved=report_doc.date_approved,
+            reporterName=reporter_name_str,
+            reportedObjectName=reported_object_name_str
+        )
+        response_reports.append(report_response_entry)
+            
+    return response_reports
+
+@router.put("/api/reports/{report_id}/approve", response_model=ReportValidation, summary="Approve a User Report")
+async def approve_report(report_id: PydanticObjectId, current_admin: Admin = Depends(get_current_active_admin)):
+    report_to_approve = await ReportValidation.get(report_id)
+
+    if not report_to_approve:
+        raise HTTPException(status_code=404, detail=f"Report with id {report_id} not found")
+
+    if report_to_approve.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Report {report_id} already processed. Status: {report_to_approve.status}")
+
+    report_to_approve.status = "approved"
+    report_to_approve.date_approved = datetime.utcnow()
+    await report_to_approve.save()
+
+    final_report_entry = FinalReport(
+        original_report_id=str(report_to_approve.id), 
+        reported_object_id=str(report_to_approve.reported_object_id), 
+        reporter=str(report_to_approve.reporter), 
+        reason=report_to_approve.reason,
+        date_reported=report_to_approve.date_reported,
+        date_approved=report_to_approve.date_approved 
+    )
+    await final_report_entry.insert()
+
+    return report_to_approve
+
+@router.put("/api/reports/{report_id}/reject", response_model=ReportValidation, summary="Reject a User Report")
+async def reject_report(report_id: PydanticObjectId, current_admin: Admin = Depends(get_current_active_admin)):
+    report_to_reject = await ReportValidation.get(report_id)
+
+    if not report_to_reject:
+        raise HTTPException(status_code=404, detail=f"Report with id {report_id} not found")
+
+    if report_to_reject.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Report {report_id} already processed. Status: {report_to_reject.status}")
+
+    report_to_reject.status = "rejected"
+    await report_to_reject.save()
+
+    return report_to_reject
