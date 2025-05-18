@@ -1,10 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field
-from beanie import Document
+from pydantic import BaseModel, EmailStr, Field, validator
+from beanie import Document, Link
+from beanie.odm.fields import PydanticObjectId
 from datetime import datetime
 import enum
-
-
-
+from typing import List, Optional
 
 class Admin(Document):
    full_name: str
@@ -161,7 +160,7 @@ class ApplicantJobSeeker(Document):
 
 class JobSeeker(Document):
     user_id: str = Field(alias="userId")
-    joined_at: datetime = Field(alias="joinedAt")
+    joined_at: datetime = Field(default_factory=datetime.utcnow, alias="joinedAt")
     availability: bool = Field(default=True)
     hourly_rate: str = Field(default="0", alias="hourlyRate")
     credentials: str | None = Field(default=None)
@@ -170,3 +169,55 @@ class JobSeeker(Document):
     
     class Settings:
         name = "jobseekers"
+
+
+class ReportValidation(Document):
+    reported_object_id: PydanticObjectId = Field(alias="reportedObjectId")
+    reporter: PydanticObjectId
+    reason: str
+    status: str = Field(default="pending")  # e.g., pending, approved, rejected
+    date_reported: datetime = Field(default_factory=datetime.utcnow, alias="dateReported")
+    date_approved: Optional[datetime] = Field(default=None, alias="dateApproved")
+
+    class Settings:
+        name = "report_validation"
+
+
+class FinalReport(Document):
+    original_report_id: str = Field(alias="originalReportId")
+    reported_object_id: str = Field(alias="reportedObjectId")
+    reporter: str
+    reason: str
+    date_reported: datetime = Field(alias="dateReported")
+    date_approved: datetime = Field(default_factory=datetime.utcnow, alias="dateApproved")
+
+    class Settings:
+        name = "final_reports"
+
+
+class ReportResponse(BaseModel):
+    id: str 
+    reported_object_id: str = Field(alias="reportedObjectId") 
+    reporter: str 
+    reason: str
+    status: str
+    date_reported: datetime = Field(alias="dateReported")
+    date_approved: Optional[datetime] = Field(default=None, alias="dateApproved")
+    reporter_name: Optional[str] = Field(default=None, alias="reporterName") 
+    reported_object_name: Optional[str] = Field(default=None, alias="reportedObjectName")
+
+    @validator('id', 'reported_object_id', 'reporter', pre=True, allow_reuse=True)
+    def _convert_ids_to_str(cls, v, field):
+        if isinstance(v, PydanticObjectId):
+            return str(v)
+        if v is None:
+            return "MISSING_ID"
+        if isinstance(v, dict) and not v:  
+            return "INVALID_ID_EMPTY_OBJECT" 
+        return str(v) 
+
+    class Config:
+        populate_by_name = True
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat() if dt else None,
+        }
