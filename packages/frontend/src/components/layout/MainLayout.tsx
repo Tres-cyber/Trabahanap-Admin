@@ -4,18 +4,10 @@ import { NotificationPanel } from '../notifications/NotificationPanel';
 import { motion } from 'framer-motion';
 import ediskarteLogo from '../../assets/ediskarte-logo.png';
 import { logoutUser, getCurrentAdmin, getToken } from '../../services/auth';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface MainLayoutProps {
   children: ReactNode;
-}
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  read: boolean;
 }
 
 interface AdminDetails {
@@ -31,32 +23,12 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'New User Registration',
-      message: 'John Doe has registered as an employer',
-      timestamp: '2 minutes ago',
-      type: 'info',
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'Verification Approved',
-      message: "Jane Smith's verification has been approved",
-      timestamp: '1 hour ago',
-      type: 'success',
-      read: true,
-    },
-    {
-      id: '3',
-      title: 'System Update',
-      message: 'System maintenance scheduled for tomorrow',
-      timestamp: '2 hours ago',
-      type: 'warning',
-      read: false,
-    },
-  ]);
+  const {
+    notifications,
+    markOneAsRead,
+    markAllAsRead,
+    unreadCount,
+  } = useNotifications();
 
   useEffect(() => {
     let isMounted = true;
@@ -113,16 +85,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
     setIsProfileOpen(false);
     navigate('/login');
   };
-
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((notification) =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
-    );
-  };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (isLoadingAdmin) {
     return (
@@ -367,8 +329,9 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       <NotificationPanel
         isOpen={isNotificationPanelOpen}
         onClose={() => setIsNotificationPanelOpen(false)}
-        notifications={notifications}
-        onMarkAsRead={handleMarkAsRead}
+        notifications={notifications} 
+        onMarkAsRead={markOneAsRead}
+        onMarkAllAsRead={markAllAsRead}
       />
     </div>
   );

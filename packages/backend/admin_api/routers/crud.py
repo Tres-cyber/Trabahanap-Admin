@@ -1,9 +1,64 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
 from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs, Applicant, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData, ReportValidation, FinalReport, ReportResponse
 from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_active_admin
 from datetime import datetime, timedelta
 from beanie import PydanticObjectId
-from typing import List
+from typing import List, Dict, Any
+import logging
+import json
+
+# Configure basic logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info(f"New WebSocket connection: {websocket.client}. Total connections: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"WebSocket disconnected: {websocket.client}. Total connections: {len(self.active_connections)}")
+
+    async def broadcast(self, message: str):
+        disconnected_sockets = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                logger.error(f"Error broadcasting to {connection.client}: {e}. Marking for disconnect.")
+                disconnected_sockets.append(connection)
+        
+        for ws in disconnected_sockets:
+            self.disconnect(ws)
+
+manager = ConnectionManager()
+
+async def broadcast_notification(type: str, message: str, details: Dict[str, Any] = None):
+    payload = {"type": type, "message": message, "details": details or {}}
+    logger.info(f"Broadcasting notification: {payload}")
+    await manager.broadcast(json.dumps(payload))
+
+async def get_admin_from_query_token(token: str = Query(None)):
+    if not token:
+        # Allow anonymous access for now if no token, or raise WebSocketDisconnect
+        logger.warning("WebSocket connection attempt without token.")
+        # raise WebSocketDisconnect(code=403, reason="Token required") 
+        return {"token_user": "anonymous_websocket_user"} # Or handle as unauthenticated
+    
+    logger.info(f"WebSocket attempting connection with token: {token[:10]}...")
+    # In a real app, you would validate the token and fetch the admin user.
+    # from admin_api.auth.auth_utils import get_current_active_admin_from_token # Example
+    # admin = await get_current_active_admin_from_token(token)
+    # if not admin:
+    #     raise WebSocketDisconnect(code=403, reason="Invalid token or admin not found")
+    # return admin
+    return {"token_user": "admin_placeholder_ws"} # Return a placeholder admin object
 
 router = APIRouter(
     # prefix="/admin", 
@@ -88,6 +143,11 @@ async def update_verification_status(applicant_id: str, status: str):
     await applicant.save()
     
     if status == "rejected":
+        await broadcast_notification(
+            type="verification_rejected", 
+            message=f"Applicant {applicant.email} has been rejected.", 
+            details={"applicantId": str(applicant.id), "status": "rejected"}
+        )
         return {"status": "success", "message": f"Applicant verification rejected"}
     
     if status == "verified":
@@ -146,6 +206,11 @@ async def update_verification_status(applicant_id: str, status: str):
                 
                 await job_seeker.insert()
                 
+                await broadcast_notification(
+                    type="verification_approved", 
+                    message=f"Applicant {applicant.email} (Job Seeker) has been verified.", 
+                    details={"applicantId": str(applicant.id), "status": "verified", "userType": "job-seeker"}
+                )
                 return {
                     "status": "success", 
                     "message": f"Job-seeker verification approved, user and job-seeker profiles created"
@@ -162,13 +227,30 @@ async def update_verification_status(applicant_id: str, status: str):
                 
                 await job_seeker.insert()
                 
+                await broadcast_notification(
+                    type="verification_approved", 
+                    message=f"Applicant {applicant.email} (Job Seeker) has been verified (no tags).", 
+                    details={"applicantId": str(applicant.id), "status": "verified", "userType": "job-seeker"}
+                )
                 return {
                     "status": "success", 
                     "message": f"Job-seeker verification approved, but no job tags found"
                 }
         
+        # For client or other types
+        await broadcast_notification(
+            type="verification_approved", 
+            message=f"Applicant {applicant.email} (Client/Other) has been verified.", 
+            details={"applicantId": str(applicant.id), "status": "verified", "userType": applicant.user_type}
+        )
         return {"status": "success", "message": f"Client verification approved and user account created"}
     
+    # Fallback for other status changes if any (e.g., back to pending, though not typical)
+    await broadcast_notification(
+        type="verification_updated", 
+        message=f"Applicant {applicant.email} verification status updated to {status}.", 
+        details={"applicantId": str(applicant.id), "status": status}
+    )
     return {"status": "success", "message": f"Verification status updated to {status}"}
 
 
@@ -370,6 +452,12 @@ async def approve_report(report_id: PydanticObjectId, current_admin: Admin = Dep
     )
     await final_report_entry.insert()
 
+    await broadcast_notification(
+        type="report_approved", 
+        message=f"Report ID {str(report_to_approve.id)} has been approved.", 
+        details={"reportId": str(report_to_approve.id), "status": "approved"}
+    )
+
     return report_to_approve
 
 @router.put("/api/reports/{report_id}/reject", response_model=ReportValidation, summary="Reject a User Report")
@@ -385,4 +473,25 @@ async def reject_report(report_id: PydanticObjectId, current_admin: Admin = Depe
     report_to_reject.status = "rejected"
     await report_to_reject.save()
 
+    await broadcast_notification(
+        type="report_rejected", 
+        message=f"Report ID {str(report_to_reject.id)} has been rejected.", 
+        details={"reportId": str(report_to_reject.id), "status": "rejected"}
+    )
+
     return report_to_reject
+
+@router.websocket("/ws/notifications")
+async def websocket_endpoint(websocket: WebSocket, admin: dict = Depends(get_admin_from_query_token)):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text() # Keep connection alive, listen for client messages
+            logger.info(f"Received message from {websocket.client} on /ws/notifications: {data}")
+            # Optionally process client messages here
+    except WebSocketDisconnect as e:
+        logger.info(f"WebSocket {websocket.client} disconnected from /ws/notifications with code {e.code}: {e.reason}")
+    except Exception as e:
+        logger.error(f"Unexpected error with WebSocket {websocket.client} on /ws/notifications: {e}")
+    finally:
+        manager.disconnect(websocket)
