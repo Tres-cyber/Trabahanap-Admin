@@ -1,6 +1,8 @@
 import { X, Bell, CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
+// This interface should be compatible with UINotification from NotificationContext
 interface Notification {
   id: string;
   title: string;
@@ -8,6 +10,7 @@ interface Notification {
   timestamp: string;
   type: 'info' | 'success' | 'warning' | 'error';
   read: boolean;
+  details?: Record<string, any> & { type?: string };
 }
 
 interface NotificationPanelProps {
@@ -15,6 +18,7 @@ interface NotificationPanelProps {
   onClose: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
+  onMarkAllAsRead?: () => void;
 }
 
 export const NotificationPanel = ({
@@ -22,7 +26,10 @@ export const NotificationPanel = ({
   onClose,
   notifications,
   onMarkAsRead,
+  onMarkAllAsRead,
 }: NotificationPanelProps) => {
+  const navigate = useNavigate();
+
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'success':
@@ -34,6 +41,35 @@ export const NotificationPanel = ({
       default:
         return <Info className="h-5 w-5 text-blue-500" />;
     }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    onMarkAsRead(notification.id);
+
+    const backendNotificationType = notification.details?.type;
+    let targetPath = '';
+
+    if (backendNotificationType) {
+      switch (backendNotificationType) {
+        case 'new_verification_request':
+        case 'verification_approved':
+        case 'verification_rejected':
+          targetPath = '/verification';
+          break;
+        case 'new_report_filed':
+        case 'report_approved':
+        case 'report_rejected':
+          targetPath = '/reports';
+          break;
+        default:
+          break;
+      }
+    }
+
+    if (targetPath) {
+      navigate(targetPath);
+    }
+    onClose();
   };
 
   return (
@@ -89,7 +125,7 @@ export const NotificationPanel = ({
                         className={`p-4 hover:bg-gray-50/50 transition-colors cursor-pointer ${
                           !notification.read ? 'bg-blue-50/50' : ''
                         }`}
-                        onClick={() => onMarkAsRead(notification.id)}
+                        onClick={() => handleNotificationClick(notification)}
                       >
                         <div className="flex items-start gap-4">
                           <div className="flex-shrink-0 mt-1">
@@ -116,7 +152,7 @@ export const NotificationPanel = ({
               {notifications.length > 0 && (
                 <div className="p-4 border-t bg-gray-50/50">
                   <button
-                    onClick={() => notifications.forEach(n => onMarkAsRead(n.id))}
+                    onClick={onMarkAllAsRead ? onMarkAllAsRead : () => notifications.forEach(n => !n.read && onMarkAsRead(n.id))}
                     className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     Mark all as read
