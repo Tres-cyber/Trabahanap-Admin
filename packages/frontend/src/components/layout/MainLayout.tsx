@@ -286,6 +286,36 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
             </NavLink>
 
             <NavLink
+              to="/job-request"
+              className={({ isActive }) =>
+                `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? "text-[#0B153C] bg-[#0B153C]/5"
+                    : "text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]"
+                }`
+              }
+            >
+              <svg
+                className={`mr-4 h-6 w-6 ${
+                  location.pathname.startsWith("/job-request")
+                    ? "text-[#0B153C]"
+                    : "text-gray-400 group-hover:text-[#0B153C]"
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
+              Job Request
+            </NavLink>
+
+            <NavLink
               to="/reports"
               className={({ isActive }) =>
                 `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
