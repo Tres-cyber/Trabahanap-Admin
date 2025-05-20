@@ -133,7 +133,11 @@ const ReportsPage: React.FC = () => {
       setReports((prevReports) =>
         prevReports.map((r) =>
           r.id === selectedReport.id
-            ? { ...r, status: "approved", dateApproved: approvedReportData.dateApproved }
+            ? {
+                ...r,
+                status: "approved",
+                dateApproved: approvedReportData.dateApproved,
+              }
             : r
         )
       );
@@ -284,7 +288,7 @@ const ReportsPage: React.FC = () => {
                     Reporter
                   </TableHead>
                   <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Reported Object
+                    Reported
                   </TableHead>
                   <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Reason
