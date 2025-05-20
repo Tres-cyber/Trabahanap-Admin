@@ -3,7 +3,7 @@ from beanie import Document, Link
 from beanie.odm.fields import PydanticObjectId
 from datetime import datetime
 import enum
-from typing import List, Optional
+from typing import List, Optional, Any
 
 class Admin(Document):
    full_name: str
@@ -57,23 +57,34 @@ class User(Document):
 class TotalUsers(BaseModel):
     total_users: int
 
+class JobStatusEnum(str, enum.Enum):
+    OPEN = "open"
+    PENDING = "pending"  # e.g., awaiting applicant, client review
+    COMPLETED = "completed"
+    REVIEWED = "reviewed" # e.g., after completion, client has reviewed
+
 class Job(Document):
+    client_id: PydanticObjectId = Field(alias="clientId")
+    applicant_count: int = Field(default=0, alias="applicantCount")
+
     job_title: str = Field(alias="jobTitle")
     job_description: str = Field(alias="jobDescription")
     category: str
     job_location: str = Field(alias="jobLocation")
-    job_status: str = Field(alias="jobStatus")
-    budget: str
-    job_duration: str = Field(alias="jobDuration")
-    job_image: list[str] = Field(alias="jobImage")
+    job_status: JobStatusEnum = Field(alias="jobStatus") 
+    budget: str 
+    job_duration: str = Field(alias="jobDuration") 
+    job_image: List[str] = Field(default_factory=list, alias="jobImage") 
     date_posted: datetime = Field(alias="datePosted")
-    job_rating: int = Field(alias="jobRating")
-    job_review: str = Field(alias="jobReview")
-    accepted_at: datetime = Field(alias="acceptedAt")
-    completed_at: datetime = Field(alias="completedAt")
-    verified_at: datetime = Field(alias="verifiedAt")
-    job_seeker_id: str = Field(alias="jobSeekerId")
-    offer: str 
+
+    accepted_at: Optional[datetime] = Field(default=None, alias="acceptedAt")
+    completed_at: Optional[datetime] = Field(default=None, alias="completedAt")
+    verified_at: Optional[datetime] = Field(default=None, alias="verifiedAt") 
+
+    job_rating: Optional[int] = Field(default=None, alias="jobRating")
+    job_review: Optional[str] = Field(default=None, alias="jobReview")
+    job_seeker_id: Optional[PydanticObjectId] = Field(default=None, alias="jobSeekerId") 
+    offer: Optional[str] = Field(default=None) 
 
     class Settings:
         name = "jobrequest"

@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query, BackgroundTasks
 from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs, Applicant, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData, ReportValidation, FinalReport, ReportResponse
 from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_active_admin
 from datetime import datetime, timedelta
 from beanie import PydanticObjectId
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 import json
+from ..services.email_service import send_email_async, get_verification_email_body, get_report_email_body, get_notification_for_reported_user_body
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
@@ -131,7 +132,7 @@ async def get_applicant(applicant_id: str):
 
 
 @router.put("/update_verification_status/{applicant_id}")
-async def update_verification_status(applicant_id: str, status: str):
+async def update_verification_status(applicant_id: str, status: str, background_tasks: BackgroundTasks):
     applicant = await Applicant.get(applicant_id)
     if not applicant:
         raise HTTPException(status_code=404, detail="Applicant not found")
@@ -139,120 +140,112 @@ async def update_verification_status(applicant_id: str, status: str):
     if status not in ["pending", "verified", "rejected"]:
         raise HTTPException(status_code=400, detail="Invalid status value")
     
+    previous_status = applicant.verification_status # Store previous status
     applicant.verification_status = status
     await applicant.save()
     
-    if status == "rejected":
+    applicant_name = f"{applicant.first_name} {applicant.last_name if applicant.last_name else ''}".strip()
+    email_subject = ""
+    email_body = ""
+
+    if status == "rejected" and previous_status != "rejected":
         await broadcast_notification(
             type="verification_rejected", 
             message=f"Applicant {applicant.email} has been rejected.", 
             details={"applicantId": str(applicant.id), "status": "rejected"}
         )
+        email_subject = "Update on Your Trabahanap Application"
+        email_body = get_verification_email_body(name=applicant_name, status="rejected")
+        background_tasks.add_task(send_email_async, email_subject, [applicant.email], email_body)
         return {"status": "success", "message": f"Applicant verification rejected"}
     
-    if status == "verified":
-        user = User(
-            first_name=applicant.first_name,
-            middle_name=applicant.middle_name,
-            last_name=applicant.last_name,
-            suffix_name=applicant.suffix_name,
-            gender=applicant.gender,
-            birth_date=applicant.birth_date,
-            age=applicant.age,
-            email=applicant.email,
-            password=applicant.password,  
-            profile_picture=applicant.profile_picture,
-            barangay=applicant.barangay,
-            street=applicant.street,
-            house_number=applicant.house_number,
-            user_type=applicant.user_type,
-            id_validation_front_image=applicant.id_validation_front_image,
-            id_validation_back_image=applicant.id_validation_back_image,
-            id_type=applicant.id_type,
-            jobs_done=applicant.jobs_done,
-            joined_at=applicant.joined_at,
-            verification_status="verified"
-        )
+    if status == "verified" and previous_status != "verified":
+        # Check if user already exists to prevent duplicates on re-verification for some reason
+        user = await User.find_one(User.email == applicant.email)
+        if not user:
+            user = User(
+                first_name=applicant.first_name,
+                middle_name=applicant.middle_name,
+                last_name=applicant.last_name,
+                suffix_name=applicant.suffix_name,
+                gender=applicant.gender,
+                birth_date=applicant.birth_date,
+                age=applicant.age,
+                email=applicant.email,
+                password=applicant.password,  
+                profile_picture=applicant.profile_picture,
+                barangay=applicant.barangay,
+                street=applicant.street,
+                house_number=applicant.house_number,
+                user_type=applicant.user_type,
+                id_validation_front_image=applicant.id_validation_front_image,
+                id_validation_back_image=applicant.id_validation_back_image,
+                id_type=applicant.id_type,
+                jobs_done=applicant.jobs_done,
+                joined_at=applicant.joined_at,
+                verification_status="verified" # Set user's verification status
+            )
+            await user.insert()
+        else:
+            # If user exists, ensure their verification status is updated
+            user.verification_status = "verified"
+            await user.save()
         
-        await user.insert()
-        
+        email_subject = "Congratulations! Your Trabahanap Application is Approved!"
+        email_body = get_verification_email_body(name=applicant_name, status="verified")
+        background_tasks.add_task(send_email_async, email_subject, [applicant.email], email_body)
+
+        # Handle JobSeeker specific logic
         if applicant.user_type.lower() == "job-seeker":
             db = ApplicantJobSeeker.get_motor_collection().database
-            
             applicant_job_seeker_data = await db.applicant_jobseeker.find_one({"applicantId": str(applicant.id)})
-            
-            if not applicant_job_seeker_data:
-                applicant_job_seeker_data = await db.applicant_jobseeker.find_one({"applicantId": applicant.id})
+            if not applicant_job_seeker_data: # Fallback for older records if applicantId was stored as ObjectId
+                 applicant_job_seeker_data = await db.applicant_jobseeker.find_one({"applicantId": PydanticObjectId(applicant.id)})
+
+            job_seeker_exists = await JobSeeker.find_one(JobSeeker.user_id == str(user.id))
+            if not job_seeker_exists:
+                job_seeker_payload = {
+                    "user_id": str(user.id),
+                    "joined_at": datetime.utcnow(),
+                    "availability": True,
+                    "hourly_rate": "0",
+                    "credentials": None,
+                    "job_tags": []
+                }
+                if applicant_job_seeker_data:
+                    job_seeker_payload.update({
+                        "joined_at": applicant_job_seeker_data.get('joinedAt', datetime.utcnow()),
+                        "availability": applicant_job_seeker_data.get('availability', True),
+                        "hourly_rate": applicant_job_seeker_data.get('hourlyRate', "0"),
+                        "credentials": applicant_job_seeker_data.get('credentials'),
+                        "job_tags": applicant_job_seeker_data.get('jobTags', [])
+                    })
                 
+                job_seeker = JobSeeker(**job_seeker_payload)
+                await job_seeker.insert()
+                msg = "Job-seeker verification approved, user and job-seeker profiles created."
                 if not applicant_job_seeker_data:
-                    all_seekers_data = await db.applicant_jobseeker.find({}).to_list(length=100)
-                    applicant_id_str = str(applicant.id)
-                    
-                    for seeker in all_seekers_data:
-                        seeker_applicant_id = seeker.get('applicantId')
-                        if seeker_applicant_id and (seeker_applicant_id == applicant_id_str or str(seeker_applicant_id) == applicant_id_str):
-                            applicant_job_seeker_data = seeker
-                            break
-            
-            if applicant_job_seeker_data:
-                job_seeker = JobSeeker(
-                    user_id=str(user.id),
-                    joined_at=applicant_job_seeker_data.get('joinedAt', datetime.utcnow()),
-                    availability=applicant_job_seeker_data.get('availability', True),
-                    hourly_rate=applicant_job_seeker_data.get('hourlyRate', "0"),
-                    credentials=applicant_job_seeker_data.get('credentials'),
-                    job_tags=applicant_job_seeker_data.get('jobTags', [])
-                )
-                
-                await job_seeker.insert()
-                
-                await broadcast_notification(
-                    type="verification_approved", 
-                    message=f"Applicant {applicant.email} (Job Seeker) has been verified.", 
-                    details={"applicantId": str(applicant.id), "status": "verified", "userType": "job-seeker"}
-                )
-                return {
-                    "status": "success", 
-                    "message": f"Job-seeker verification approved, user and job-seeker profiles created"
-                }
+                    msg += " (Note: specific job seeker details like tags were not found from applicant_jobseeker collection)."
             else:
-                job_seeker = JobSeeker(
-                    user_id=str(user.id),
-                    joined_at=datetime.utcnow(),
-                    availability=True,
-                    hourly_rate="0",
-                    credentials=None,
-                    job_tags=[]
-                )
-                
-                await job_seeker.insert()
-                
-                await broadcast_notification(
-                    type="verification_approved", 
-                    message=f"Applicant {applicant.email} (Job Seeker) has been verified (no tags).", 
-                    details={"applicantId": str(applicant.id), "status": "verified", "userType": "job-seeker"}
-                )
-                return {
-                    "status": "success", 
-                    "message": f"Job-seeker verification approved, but no job tags found"
-                }
+                msg = "Job-seeker verification approved. User profile updated. Job-seeker profile already exists."
+
+            await broadcast_notification(
+                type="verification_approved", 
+                message=f"Applicant {applicant.email} (Job Seeker) has been verified.", 
+                details={"applicantId": str(applicant.id), "status": "verified", "userType": "job-seeker"}
+            )
+            return {"status": "success", "message": msg}
         
-        # For client or other types
+        # For client or other non-job-seeker types
         await broadcast_notification(
             type="verification_approved", 
-            message=f"Applicant {applicant.email} (Client/Other) has been verified.", 
+            message=f"Applicant {applicant.email} ({applicant.user_type}) has been verified.", 
             details={"applicantId": str(applicant.id), "status": "verified", "userType": applicant.user_type}
         )
-        return {"status": "success", "message": f"Client verification approved and user account created"}
+        return {"status": "success", "message": f"{applicant.user_type.capitalize()} verification approved, user profile created/updated."}
     
-    # Fallback for other status changes if any (e.g., back to pending, though not typical)
-    await broadcast_notification(
-        type="verification_updated", 
-        message=f"Applicant {applicant.email} verification status updated to {status}.", 
-        details={"applicantId": str(applicant.id), "status": status}
-    )
-    return {"status": "success", "message": f"Verification status updated to {status}"}
-
+    # Fallback for cases where status doesn't change or is just set to pending
+    return {"status": "success", "message": f"Applicant status updated to {status}. No notification sent as status is '{status}' or unchanged."}
 
 @router.get("/get_monthly_applications", response_model=MonthlyData)
 async def get_monthly_applications():
@@ -429,18 +422,21 @@ async def get_all_reports(current_admin: Admin = Depends(get_current_active_admi
     return response_reports
 
 @router.put("/api/reports/{report_id}/approve", response_model=ReportValidation, summary="Approve a User Report")
-async def approve_report(report_id: PydanticObjectId, current_admin: Admin = Depends(get_current_active_admin)):
+async def approve_report(report_id: PydanticObjectId, background_tasks: BackgroundTasks, current_admin: Admin = Depends(get_current_active_admin)):
     report_to_approve = await ReportValidation.get(report_id)
 
     if not report_to_approve:
+        logger.error(f"Approve_report: Report with id {report_id} not found by admin {current_admin.email}")
         raise HTTPException(status_code=404, detail=f"Report with id {report_id} not found")
 
     if report_to_approve.status != "pending":
+        logger.warning(f"Approve_report: Report {report_id} already processed. Status: {report_to_approve.status}. Attempt by admin {current_admin.email}")
         raise HTTPException(status_code=400, detail=f"Report {report_id} already processed. Status: {report_to_approve.status}")
 
     report_to_approve.status = "approved"
     report_to_approve.date_approved = datetime.utcnow()
     await report_to_approve.save()
+    logger.info(f"Report {report_id} approved by admin {current_admin.email}")
 
     final_report_entry = FinalReport(
         original_report_id=str(report_to_approve.id), 
@@ -451,6 +447,41 @@ async def approve_report(report_id: PydanticObjectId, current_admin: Admin = Dep
         date_approved=report_to_approve.date_approved 
     )
     await final_report_entry.insert()
+    logger.info(f"FinalReport entry created for approved report {report_id}")
+
+    # Send email to REPORTER
+    reporter_user = await User.get(report_to_approve.reporter) 
+    if reporter_user:
+        if reporter_user.email:
+            reporter_name = f"{reporter_user.first_name} {reporter_user.last_name if reporter_user.last_name else ''}".strip()
+            email_subject_to_reporter = "Update on Your Recent Report to Trabahanap"
+            email_body_to_reporter = get_report_email_body(
+                reporter_name=reporter_name,
+                report_status="approved",
+                reported_item_info=f"Report ID {str(report_to_approve.id)} concerning object ID {str(report_to_approve.reported_object_id)}" 
+            )
+            background_tasks.add_task(send_email_async, email_subject_to_reporter, [reporter_user.email], email_body_to_reporter)
+        else:
+            logger.warning(f"REPORTER user {reporter_user.id} found, but no email address is present. Cannot send approval notification for report {report_id}.")
+    else:
+        logger.warning(f"REPORTER user with ID {report_to_approve.reporter} not found. Cannot send approval notification for report {report_id}.")
+
+    # Send email to REPORTED USER (if applicable and report is approved)
+    reported_user = await User.get(report_to_approve.reported_object_id)
+    if reported_user:
+        if reported_user.email:
+            reported_user_name = f"{reported_user.first_name} {reported_user.last_name if reported_user.last_name else ''}".strip()
+            email_subject_to_reported_user = "Notification Regarding Your Account/Content on Trabahanap"
+            email_body_to_reported_user = get_notification_for_reported_user_body(
+                reported_user_name=reported_user_name,
+                reported_item_info=f"Content/behavior associated with your account (Ref: {report_to_approve.reported_object_id})",
+                report_reason=report_to_approve.reason
+            )
+            background_tasks.add_task(send_email_async, email_subject_to_reported_user, [reported_user.email], email_body_to_reported_user)
+        else:
+            logger.warning(f"REPORTED USER {reported_user.id} (object ID {report_to_approve.reported_object_id}) found, but no email address is present. Cannot send notification for approved report {report_id}.")
+    else:
+        logger.warning(f"REPORTED USER with ID {report_to_approve.reported_object_id} not found. Cannot send notification for approved report {report_id}. This might be normal if the reported object is not a user or does not have an email.")
 
     await broadcast_notification(
         type="report_approved", 
@@ -461,17 +492,37 @@ async def approve_report(report_id: PydanticObjectId, current_admin: Admin = Dep
     return report_to_approve
 
 @router.put("/api/reports/{report_id}/reject", response_model=ReportValidation, summary="Reject a User Report")
-async def reject_report(report_id: PydanticObjectId, current_admin: Admin = Depends(get_current_active_admin)):
+async def reject_report(report_id: PydanticObjectId, background_tasks: BackgroundTasks, current_admin: Admin = Depends(get_current_active_admin)):
     report_to_reject = await ReportValidation.get(report_id)
 
     if not report_to_reject:
+        logger.error(f"Reject_report: Report with id {report_id} not found by admin {current_admin.email}")
         raise HTTPException(status_code=404, detail=f"Report with id {report_id} not found")
 
     if report_to_reject.status != "pending":
+        logger.warning(f"Reject_report: Report {report_id} already processed. Status: {report_to_reject.status}. Attempt by admin {current_admin.email}")
         raise HTTPException(status_code=400, detail=f"Report {report_id} already processed. Status: {report_to_reject.status}")
 
     report_to_reject.status = "rejected"
     await report_to_reject.save()
+    logger.info(f"Report {report_id} rejected by admin {current_admin.email}")
+
+    # Send email to reporter
+    reporter_user = await User.get(report_to_reject.reporter) 
+    if reporter_user:
+        if reporter_user.email:
+            reporter_name = f"{reporter_user.first_name} {reporter_user.last_name if reporter_user.last_name else ''}".strip()
+            email_subject = "Update on Your Recent Report to Trabahanap"
+            email_body = get_report_email_body(
+                reporter_name=reporter_name,
+                report_status="rejected",
+                reported_item_info=f"Report ID {str(report_to_reject.id)} concerning object ID {str(report_to_reject.reported_object_id)}"
+            )
+            background_tasks.add_task(send_email_async, email_subject, [reporter_user.email], email_body)
+        else:
+            logger.warning(f"Reporter user {reporter_user.id} found, but no email address is present. Cannot send rejection notification for report {report_id}.")
+    else:
+        logger.warning(f"Reporter user with ID {report_to_reject.reporter} not found. Cannot send rejection notification for report {report_id}.")
 
     await broadcast_notification(
         type="report_rejected", 
@@ -480,6 +531,28 @@ async def reject_report(report_id: PydanticObjectId, current_admin: Admin = Depe
     )
 
     return report_to_reject
+
+# --- Job Request Endpoints ---
+@router.get("/api/job_requests/", response_model=List[Job])
+async def get_all_job_requests(
+    current_admin: Admin = Depends(get_current_active_admin) # Assuming admin auth is needed
+):
+    jobs = await Job.find_all().to_list()
+    # if not jobs: # frontend might prefer an empty list over 404
+    #     raise HTTPException(status_code=404, detail="No job requests found")
+    return jobs
+
+@router.get("/api/job_requests/{job_id}", response_model=Job)
+async def get_job_request_by_id(
+    job_id: PydanticObjectId,
+    current_admin: Admin = Depends(get_current_active_admin) # Assuming admin auth is needed
+):
+    job = await Job.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job request with ID {job_id} not found")
+    return job
+# --- End Job Request Endpoints ---
+
 
 @router.websocket("/ws/notifications")
 async def websocket_endpoint(websocket: WebSocket, admin: dict = Depends(get_admin_from_query_token)):
