@@ -170,7 +170,7 @@ class ApplicantJobSeeker(Document):
 
 
 class JobSeeker(Document):
-    user_id: str = Field(alias="userId")
+    user_id: PydanticObjectId = Field(alias="userId")
     joined_at: datetime = Field(default_factory=datetime.utcnow, alias="joinedAt")
     availability: bool = Field(default=True)
     hourly_rate: str = Field(default="0", alias="hourlyRate")
