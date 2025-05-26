@@ -202,10 +202,10 @@ async def update_verification_status(applicant_id: str, status: str, background_
             if not applicant_job_seeker_data: # Fallback for older records if applicantId was stored as ObjectId
                  applicant_job_seeker_data = await db.applicant_jobseeker.find_one({"applicantId": PydanticObjectId(applicant.id)})
 
-            job_seeker_exists = await JobSeeker.find_one(JobSeeker.user_id == str(user.id))
+            job_seeker_exists = await JobSeeker.find_one(JobSeeker.user_id == user.id)
             if not job_seeker_exists:
                 job_seeker_payload = {
-                    "user_id": str(user.id),
+                    "user_id": user.id,
                     "joined_at": datetime.utcnow(),
                     "availability": True,
                     "hourly_rate": "0",
