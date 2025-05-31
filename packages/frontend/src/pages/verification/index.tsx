@@ -108,6 +108,8 @@ const VerificationPage = () => {
             | "verified"
             | "rejected",
         }));
+
+        console.log(transformedData);
         setUsers(transformedData);
       } catch (err) {
         console.error("Error fetching applicants:", err);
