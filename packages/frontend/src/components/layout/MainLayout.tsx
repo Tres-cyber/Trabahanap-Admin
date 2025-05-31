@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import ediskarteLogo from '../../assets/ediskarte-logo.png';
 import { logoutUser, getCurrentAdmin, getToken } from '../../services/auth';
 import { useNotifications } from '../../context/NotificationContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -20,6 +21,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [adminDetails, setAdminDetails] = useState<AdminDetails | null>(null);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,6 +103,16 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200"
+              >
+                {isSidebarCollapsed ? (
+                  <ChevronRight className="h-6 w-6" />
+                ) : (
+                  <ChevronLeft className="h-6 w-6" />
+                )}
+              </button>
               <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
             </div>
             <div className="flex items-center space-x-6">
@@ -213,46 +225,38 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       </header>
 
       <div className="flex pt-16">
-        <aside className="fixed left-0 top-16 w-64 bg-white shadow-md h-[calc(100vh-4rem)]">
-          <div className="px-4 pt-12 pb-4 border-b border-gray-100">
+        <aside 
+          className={`fixed left-0 top-16 bg-white shadow-md h-[calc(100vh-4rem)] transition-all duration-300 ${
+            isSidebarCollapsed ? 'w-16' : 'w-64'
+          }`}
+        >
+          <div className={`px-4 pt-12 pb-4 border-b border-gray-100 ${isSidebarCollapsed ? 'px-2' : ''}`}>
             <div className="flex items-center justify-center">
-              <img
-                src={ediskarteLogo}
-                alt="Ediskarte Logo"
-                className="h-20 w-auto object-contain"
+              <img 
+                src={ediskarteLogo} 
+                alt="Ediskarte Logo" 
+                className={`${isSidebarCollapsed ? 'h-12' : 'h-20'} w-auto object-contain`}
               />
             </div>
           </div>
-
+          
           <nav className="mt-8 px-3 space-y-2">
             <NavLink
               to="/"
               className={({ isActive }) =>
                 `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
-                    ? "text-[#0B153C] bg-[#0B153C]/5"
-                    : "text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]"
-                }`
+                    ? 'text-[#0B153C] bg-[#0B153C]/5'
+                    : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
+                } ${isSidebarCollapsed ? 'justify-center px-2' : ''}`
               }
             >
-              <svg
-                className={`mr-4 h-6 w-6 ${
-                  location.pathname === "/"
-                    ? "text-[#0B153C]"
-                    : "text-gray-400 group-hover:text-[#0B153C]"
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                />
+              <svg className={`${isSidebarCollapsed ? 'mr-0' : 'mr-4'} h-6 w-6 ${
+                location.pathname === '/' ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              Dashboard
+              {!isSidebarCollapsed && <span>Dashboard</span>}
             </NavLink>
 
             <NavLink
@@ -260,29 +264,17 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               className={({ isActive }) =>
                 `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
-                    ? "text-[#0B153C] bg-[#0B153C]/5"
-                    : "text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]"
-                }`
+                    ? 'text-[#0B153C] bg-[#0B153C]/5'
+                    : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
+                } ${isSidebarCollapsed ? 'justify-center px-2' : ''}`
               }
             >
-              <svg
-                className={`mr-4 h-6 w-6 ${
-                  location.pathname.startsWith("/verification")
-                    ? "text-[#0B153C]"
-                    : "text-gray-400 group-hover:text-[#0B153C]"
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
+              <svg className={`${isSidebarCollapsed ? 'mr-0' : 'mr-4'} h-6 w-6 ${
+                location.pathname.startsWith('/verification') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Verification
+              {!isSidebarCollapsed && <span>Verification</span>}
             </NavLink>
 
             <NavLink
@@ -290,29 +282,17 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               className={({ isActive }) =>
                 `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
-                    ? "text-[#0B153C] bg-[#0B153C]/5"
-                    : "text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]"
-                }`
+                    ? 'text-[#0B153C] bg-[#0B153C]/5'
+                    : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
+                } ${isSidebarCollapsed ? 'justify-center px-2' : ''}`
               }
             >
-              <svg
-                className={`mr-4 h-6 w-6 ${
-                  location.pathname.startsWith("/job-request")
-                    ? "text-[#0B153C]"
-                    : "text-gray-400 group-hover:text-[#0B153C]"
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
+              <svg className={`${isSidebarCollapsed ? 'mr-0' : 'mr-4'} h-6 w-6 ${
+                location.pathname.startsWith('/job-request') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              Job Request
+              {!isSidebarCollapsed && <span>Job Request</span>}
             </NavLink>
 
             <NavLink
@@ -320,46 +300,33 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
               className={({ isActive }) =>
                 `group flex items-center px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   isActive
-                    ? "text-[#0B153C] bg-[#0B153C]/5"
-                    : "text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]"
-                }`
+                    ? 'text-[#0B153C] bg-[#0B153C]/5'
+                    : 'text-gray-600 hover:bg-[#0B153C]/5 hover:text-[#0B153C]'
+                } ${isSidebarCollapsed ? 'justify-center px-2' : ''}`
               }
             >
-              <svg
-                className={`mr-4 h-6 w-6 ${
-                  location.pathname.startsWith("/reports")
-                    ? "text-[#0B153C]"
-                    : "text-gray-400 group-hover:text-[#0B153C]"
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+              <svg className={`${isSidebarCollapsed ? 'mr-0' : 'mr-4'} h-6 w-6 ${
+                location.pathname.startsWith('/reports') ? 'text-[#0B153C]' : 'text-gray-400 group-hover:text-[#0B153C]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              User Report
+              {!isSidebarCollapsed && <span>User Report</span>}
             </NavLink>
           </nav>
         </aside>
 
-        <main className="flex-1 ml-64 p-8">{children}</main>
+        <main className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+          <div className="p-8">
+            {children}
+          </div>
+        </main>
       </div>
 
       <NotificationPanel
         isOpen={isNotificationPanelOpen}
         onClose={() => setIsNotificationPanelOpen(false)}
-        notifications={notifications} 
+        notifications={notifications}
         onMarkAsRead={markOneAsRead}
         onMarkAllAsRead={markAllAsRead}
       />

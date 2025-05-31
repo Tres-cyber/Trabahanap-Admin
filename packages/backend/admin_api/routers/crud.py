@@ -116,6 +116,7 @@ async def get_total_applicants():
 @router.get("/get_all_applicants")
 async def get_all_applicants():
     all_applicants = await Applicant.find_all().to_list()
+    print(all_applicants)
     return all_applicants
 
 
