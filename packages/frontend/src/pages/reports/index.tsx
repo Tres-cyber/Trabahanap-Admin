@@ -281,25 +281,25 @@ const ReportsPage: React.FC = () => {
             <Table className="min-w-full divide-y divide-gray-200">
               <TableHeader className="bg-gray-50">
                 <TableRow>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                     Report ID
                   </TableHead>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">
                     Reporter
                   </TableHead>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">
                     Reported
                   </TableHead>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
                     Reason
                   </TableHead>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                     Status
                   </TableHead>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Date Reported
                   </TableHead>
-                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -308,30 +308,28 @@ const ReportsPage: React.FC = () => {
                 {filteredReports.map((report) => (
                   <TableRow key={report.id} className="hover:bg-gray-50">
                     <TableCell
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs"
+                      className="px-6 py-4 text-sm text-gray-900"
                       title={report.id}
                     >
-                      {report.id}
+                      <div className="truncate max-w-[100px]">{report.id}</div>
                     </TableCell>
                     <TableCell
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs"
+                      className="px-6 py-4 text-sm text-gray-900"
                       title={report.reporterName || report.reporter}
                     >
-                      {report.reporterName || report.reporter}
+                      <div className="truncate max-w-[150px]">{report.reporterName || report.reporter}</div>
                     </TableCell>
                     <TableCell
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs"
-                      title={
-                        report.reportedObjectName || report.reportedObjectId
-                      }
+                      className="px-6 py-4 text-sm text-gray-900"
+                      title={report.reportedObjectName || report.reportedObjectId}
                     >
-                      {report.reportedObjectName || report.reportedObjectId}
+                      <div className="truncate max-w-[150px]">{report.reportedObjectName || report.reportedObjectId}</div>
                     </TableCell>
                     <TableCell
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-md"
+                      className="px-6 py-4 text-sm text-gray-900"
                       title={report.reason}
                     >
-                      {report.reason}
+                      <div className="truncate max-w-[200px]">{report.reason}</div>
                     </TableCell>
                     <TableCell className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -342,7 +340,7 @@ const ReportsPage: React.FC = () => {
                         {report.status}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                       {new Date(report.dateReported).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="px-6 py-4 whitespace-nowrap">
