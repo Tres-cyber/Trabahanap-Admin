@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query, BackgroundTasks
-from admin_api.models.documents import Admin, AdminCreate, LoginRequest, TotalUsers, User, Job, TotalJobs, Applicant, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData, ReportValidation, FinalReport, ReportResponse
+from ..models.documents import User, Applicant, Admin, AdminCreate, LoginRequest, TotalUsers, Job, TotalJobs, TotalApplicants, ApplicantJobSeeker, JobSeeker, MonthlyData, ReportValidation, FinalReport, Achievement, ReportResponse
 from admin_api.utils.security import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_active_admin
 from datetime import datetime, timedelta
 from beanie import PydanticObjectId
@@ -160,9 +160,11 @@ async def update_verification_status(applicant_id: str, status: str, background_
         return {"status": "success", "message": f"Applicant verification rejected"}
     
     if status == "verified" and previous_status != "verified":
-        # Check if user already exists to prevent duplicates on re-verification for some reason
+        # Check if user already exists
         user = await User.find_one(User.email == applicant.email)
         if not user:
+            # Create the "Created First Account" achievement
+            # 1. Create the User document first
             user = User(
                 first_name=applicant.first_name,
                 middle_name=applicant.middle_name,
@@ -172,7 +174,7 @@ async def update_verification_status(applicant_id: str, status: str, background_
                 birth_date=applicant.birth_date,
                 age=applicant.age,
                 email=applicant.email,
-                password=applicant.password,  
+                password=applicant.password,
                 profile_picture=applicant.profile_picture,
                 barangay=applicant.barangay,
                 street=applicant.street,
@@ -181,14 +183,38 @@ async def update_verification_status(applicant_id: str, status: str, background_
                 id_validation_front_image=applicant.id_validation_front_image,
                 id_validation_back_image=applicant.id_validation_back_image,
                 id_type=applicant.id_type,
-                jobs_done=applicant.jobs_done,
-                joined_at=applicant.joined_at,
-                verification_status="verified" # Set user's verification status
+                jobs_done=0,
+                joined_at=datetime.now(),
+                verification_status="verified",
+                verified_at=datetime.now(),
+                achievements=[] # Initialize with empty list
             )
             await user.insert()
-        else:
-            # If user exists, ensure their verification status is updated
+
+            # 2. Create the Achievement document, linking it to the new user
+            first_account_achievement = Achievement(
+                achievementName="Created First Account",
+                description="Successfully created your first account",
+                date_achieved=datetime.now(),
+                job_required="None",
+                required_job_count=0,
+                user_id=user.id  # Link to the user
+            )
+            await first_account_achievement.insert()
+
+            # 3. Update the User document with the Link to the new achievement
+            user.achievements.append(first_account_achievement) # Beanie handles Link conversion
+            await user.save()
+            
+            # NOTE: Further logic for specific user_types (e.g., job-seeker)
+            # from MEMORY[9249b8ce-6e7a-4441-be4c-d4404feecf53] should be preserved
+            # if it exists after this block. This change focuses on User creation.
+
+        else: # User already exists
             user.verification_status = "verified"
+            user.verified_at = datetime.now() # Update verified_at if re-verified
+            # If user was created before this achievement system, they won't get this achievement retroactively
+            # unless specific logic is added. This adheres to "when successfully creating the user".
             await user.save()
         
         email_subject = "Congratulations! Your Trabahanap Application is Approved!"

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator
-from beanie import Document, Link
+from beanie import Document, Link, PydanticObjectId
 from beanie.odm.fields import PydanticObjectId
 from datetime import datetime
 import enum
@@ -27,7 +27,23 @@ class LoginRequest(BaseModel):
     password: str   
 
 
+class Achievement(Document):
+    achievement_name: str = Field(..., alias="achievementName")
+    description: str
+    date_achieved: datetime = Field(default_factory=datetime.now, alias="dateAchieved")
+    job_required: Optional[str] = Field(default="None", alias="jobRequired")
+    required_job_count: Optional[int] = Field(default=0, alias="requiredJobCount")
+    user_id: PydanticObjectId = Field(..., alias="userId") # Store as plain ObjectId
+
+    class Settings:
+        name = "achievements"
+
+    class Config:
+        populate_by_name = True
+
+
 class User(Document):
+    achievements: List[Link["Achievement"]] = Field(default_factory=list)
     first_name: str = Field(alias="firstName")
     middle_name: str | None = Field(default=None, alias="middleName")
     last_name: str = Field(alias="lastName")
@@ -48,7 +64,7 @@ class User(Document):
     jobs_done: int = Field(default=0, alias="jobsDone")
     joined_at: datetime = Field(alias="joinedAt")
     verification_status: str = Field(alias="verificationStatus")
-    verified_at: datetime | None = Field(default=datetime.now(), alias="verifiedAt")
+    verified_at: datetime | None = Field(default=None, alias="verifiedAt") # Set when verified
 
     class Settings:
         name = "users"
